@@ -4,282 +4,1191 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Linehaul Planner</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@500;700;800;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;800;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
-
 <style>
 :root {
-  --primary: #0097A7;
-  --primary-dark: #007C91;
-  --accent: #F2D34F;
-
-  --white: #fff;
-  --bg: #f4f7fa;
-  --text: #0b1f2a;
-
-  --green: #00a651;
-  --amber: #f59e0b;
-  --red: #e3001b;
-
-  --shadow: 0 2px 16px rgba(0,0,0,0.08);
+  --navy:       #002855;
+  --navy-mid:   #003d80;
+  --navy-light: #1a5299;
+  --red:        #E3001B;
+  --red-dark:   #b50015;
+  --white:      #ffffff;
+  --off-white:  #f2f5f9;
+  --grey-light: #e4e9f0;
+  --grey-mid:   #9aabbe;
+  --grey-dark:  #5a6e85;
+  --green:      #00a651;
+  --amber:      #f59e0b;
+  --text:       #0d1e35;
+  --shadow:     0 2px 16px rgba(0,40,85,0.10);
+  --shadow-lg:  0 6px 32px rgba(0,40,85,0.16);
 }
-
 *{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
 body{
-  font-family:Barlow,sans-serif;
-  background:var(--bg);
+  font-family:'Barlow',sans-serif;
+  background:var(--off-white);
   color:var(--text);
+  min-height:100vh;
 }
 
-/* HEADER */
+/* ── HEADER ── */
 header{
-  background:var(--primary-dark);
-  padding:16px 24px;
-  color:white;
-  font-weight:800;
+  background:var(--navy);
+  position:sticky;top:0;z-index:100;
+  border-bottom:3px solid var(--red);
+}
+.header-inner{
+  max-width:1400px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;height:64px;
+}
+.logo{
+  display:flex;align-items:center;gap:12px;
+}
+.logo-mark{
+  width:36px;height:36px;
+  background:var(--red);
+  clip-path:polygon(0 0,100% 0,100% 70%,70% 100%,0 100%);
+  display:flex;align-items:center;justify-content:center;
+}
+.logo-mark svg{width:20px;height:20px;fill:white;}
+.logo-text{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:22px;font-weight:800;
+  color:white;letter-spacing:1px;text-transform:uppercase;
+}
+.logo-text span{color:var(--red);}
+.header-badge{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:11px;font-weight:700;letter-spacing:2px;
+  color:var(--grey-mid);text-transform:uppercase;
 }
 
-/* HERO */
+/* ── HERO BAND ── */
 .hero{
-  background:var(--primary);
-  color:white;
-  padding:30px 24px;
+  background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 60%,var(--navy-light) 100%);
+  padding:40px 32px 36px;
+  position:relative;overflow:hidden;
 }
+.hero::before{
+  content:'';position:absolute;right:-60px;top:-60px;
+  width:320px;height:320px;
+  background:var(--red);opacity:0.06;
+  border-radius:50%;
+}
+.hero::after{
+  content:'';position:absolute;right:80px;bottom:-80px;
+  width:200px;height:200px;
+  background:var(--red);opacity:0.04;
+  border-radius:50%;
+}
+.hero-inner{max-width:1400px;margin:0 auto;position:relative;z-index:1;}
 .hero h1{
-  font-family:'Barlow Condensed';
-  font-size:34px;
-  text-transform:uppercase;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:42px;font-weight:900;
+  color:white;letter-spacing:1px;text-transform:uppercase;
+  line-height:1;
 }
-.hero p{opacity:0.85;margin-top:8px}
+.hero h1 span{color:var(--red);}
+.hero p{
+  margin-top:8px;
+  font-size:15px;font-weight:300;color:rgba(255,255,255,0.7);
+  max-width:560px;line-height:1.5;
+}
 
-/* LAYOUT */
-.main{padding:24px;max-width:1200px;margin:auto;}
-.grid{display:grid;grid-template-columns:350px 1fr;gap:20px}
+/* ── MAIN LAYOUT ── */
+.main{max-width:1400px;margin:0 auto;padding:32px;}
+.layout{display:grid;grid-template-columns:380px 1fr;gap:28px;align-items:start;}
 
-/* PANEL */
+/* ── PANEL ── */
 .panel{
   background:white;
-  border-radius:10px;
+  border-radius:12px;
   box-shadow:var(--shadow);
   overflow:hidden;
 }
 .panel-header{
-  background:var(--primary-dark);
-  color:white;
-  padding:12px;
-  font-weight:700;
+  background:var(--navy);
+  padding:16px 20px;
+  display:flex;align-items:center;gap:10px;
 }
-.panel-body{padding:16px}
+.panel-header h2{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:16px;font-weight:700;letter-spacing:1.5px;
+  color:white;text-transform:uppercase;
+}
+.panel-icon{
+  width:28px;height:28px;
+  background:var(--red);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.panel-icon svg{width:15px;height:15px;fill:white;}
+.panel-body{padding:20px;}
 
-/* INPUTS */
-.field{margin-bottom:12px}
-label{font-size:12px;font-weight:700;text-transform:uppercase}
-input,select{
+/* ── SECTION DIVIDERS ── */
+.section-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:11px;font-weight:700;letter-spacing:2px;
+  color:var(--grey-mid);text-transform:uppercase;
+  margin:20px 0 12px;
+  display:flex;align-items:center;gap:8px;
+}
+.section-label::before{
+  content:'';display:block;width:16px;height:2px;background:var(--red);
+}
+.section-label:first-child{margin-top:0;}
+
+/* ── FORM ELEMENTS ── */
+.field{margin-bottom:14px;}
+.field label{
+  display:block;
+  font-size:12px;font-weight:600;
+  color:var(--grey-dark);text-transform:uppercase;letter-spacing:0.5px;
+  margin-bottom:5px;
+}
+.field input[type=number],
+.field select{
   width:100%;
-  padding:8px;
-  margin-top:4px;
+  border:1.5px solid var(--grey-light);
+  border-radius:7px;
+  padding:9px 12px;
+  font-family:'Barlow',sans-serif;
+  font-size:14px;font-weight:500;
+  color:var(--text);
+  background:var(--off-white);
+  transition:border-color .15s,background .15s;
+  -moz-appearance:textfield;
 }
-
-/* BUTTON */
-button{
-  width:100%;
-  padding:10px;
-  border:none;
-  background:var(--red);
-  color:white;
-  font-weight:800;
-  cursor:pointer;
-}
-
-/* METRICS */
-.metrics{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:10px;
-}
-.card{
+.field input[type=number]::-webkit-inner-spin-button,
+.field input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;}
+.field input:focus,.field select:focus{
+  outline:none;
+  border-color:var(--navy);
   background:white;
-  padding:12px;
-  border-radius:8px;
-  box-shadow:var(--shadow);
 }
-.card h3{font-size:12px;text-transform:uppercase}
-.card strong{font-size:22px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
 
-/* TABLE */
-table{width:100%;border-collapse:collapse;margin-top:10px}
-th,td{padding:8px;border-bottom:1px solid #eee;font-size:12px}
+/* ── TOGGLE GROUP ── */
+.toggle-group{
+  display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;
+}
+.toggle-btn{
+  padding:7px 14px;
+  border:1.5px solid var(--grey-light);
+  border-radius:6px;
+  font-family:'Barlow',sans-serif;
+  font-size:12px;font-weight:600;
+  color:var(--grey-dark);
+  background:var(--off-white);
+  cursor:pointer;
+  transition:all .15s;
+  user-select:none;
+}
+.toggle-btn:hover{border-color:var(--navy);color:var(--navy);}
+.toggle-btn.active{
+  background:var(--navy);
+  border-color:var(--navy);
+  color:white;
+}
+.toggle-btn.active-red{
+  background:var(--red);
+  border-color:var(--red);
+  color:white;
+}
 
-/* STATUS */
-.ok{color:var(--green);font-weight:700}
-.warn{color:var(--amber);font-weight:700}
-.fail{color:var(--red);font-weight:700}
+/* ── CHECKBOX ROW ── */
+.check-row{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:10px;cursor:pointer;
+}
+.check-row input[type=checkbox]{
+  width:16px;height:16px;
+  accent-color:var(--navy);cursor:pointer;
+}
+.check-row span{font-size:13px;font-weight:500;color:var(--text);}
 
+/* ── BUTTONS ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 22px;
+  border:none;border-radius:8px;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:15px;font-weight:700;letter-spacing:1px;
+  text-transform:uppercase;cursor:pointer;
+  transition:all .15s;
+  width:100%;
+}
+.btn-primary{
+  background:var(--red);color:white;
+  box-shadow:0 3px 12px rgba(227,0,27,0.3);
+}
+.btn-primary:hover{background:var(--red-dark);transform:translateY(-1px);}
+.btn-primary:active{transform:translateY(0);}
+.btn-secondary{
+  background:var(--navy);color:white;
+  box-shadow:0 3px 12px rgba(0,40,85,0.25);
+}
+.btn-secondary:hover{background:var(--navy-mid);}
+.btn-ghost{
+  background:transparent;color:var(--navy);
+  border:1.5px solid var(--grey-light);
+}
+.btn-ghost:hover{border-color:var(--navy);background:var(--off-white);}
+.btn-sm{padding:8px 16px;font-size:13px;}
+.btn-group{display:flex;flex-direction:column;gap:10px;margin-top:20px;}
+
+/* ── RESULTS GRID ── */
+.results-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:16px;
+  margin-bottom:24px;
+}
+.metric-card{
+  background:white;
+  border-radius:10px;
+  padding:20px;
+  box-shadow:var(--shadow);
+  border-top:3px solid var(--grey-light);
+  transition:transform .15s,box-shadow .15s;
+  opacity:0;
+  animation:fadeUp .4s forwards;
+}
+.metric-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
+.metric-card.navy{border-top-color:var(--navy);}
+.metric-card.red{border-top-color:var(--red);}
+.metric-card.green{border-top-color:var(--green);}
+.metric-card.amber{border-top-color:var(--amber);}
+.metric-label{
+  font-size:11px;font-weight:700;letter-spacing:1.5px;
+  color:var(--grey-mid);text-transform:uppercase;
+  margin-bottom:8px;
+}
+.metric-value{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:38px;font-weight:900;
+  color:var(--navy);line-height:1;
+}
+.metric-value.red{color:var(--red);}
+.metric-value.green{color:var(--green);}
+.metric-value.amber{color:var(--amber);}
+.metric-sub{font-size:12px;color:var(--grey-dark);margin-top:4px;}
+
+/* ── STATUS BANNER ── */
+.status-banner{
+  border-radius:10px;padding:16px 20px;
+  display:flex;align-items:flex-start;gap:14px;
+  margin-bottom:24px;
+  opacity:0;animation:fadeUp .4s .1s forwards;
+}
+.status-banner.ok{background:#e8f7ef;border:1.5px solid var(--green);}
+.status-banner.warn{background:#fef9e7;border:1.5px solid var(--amber);}
+.status-banner.fail{background:#fdecea;border:1.5px solid var(--red);}
+.status-icon{
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:16px;
+}
+.ok .status-icon{background:var(--green);}
+.warn .status-icon{background:var(--amber);}
+.fail .status-icon{background:var(--red);}
+.status-text h3{font-size:14px;font-weight:700;margin-bottom:2px;}
+.ok .status-text h3{color:#006b35;}
+.warn .status-text h3{color:#92610a;}
+.fail .status-text h3{color:var(--red-dark);}
+.status-text p{font-size:13px;color:var(--grey-dark);}
+
+/* ── RECOMMENDATIONS ── */
+.rec-list{
+  list-style:none;
+  display:flex;flex-direction:column;gap:10px;
+  opacity:0;animation:fadeUp .4s .2s forwards;
+}
+.rec-item{
+  display:flex;align-items:flex-start;gap:12px;
+  background:white;border-radius:9px;
+  padding:14px 16px;
+  box-shadow:var(--shadow);
+  border-left:3px solid var(--grey-light);
+}
+.rec-item.primary{border-left-color:var(--red);}
+.rec-item.secondary{border-left-color:var(--navy);}
+.rec-item.info{border-left-color:var(--green);}
+.rec-bullet{
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:800;color:white;
+  flex-shrink:0;margin-top:1px;
+}
+.primary .rec-bullet{background:var(--red);}
+.secondary .rec-bullet{background:var(--navy);}
+.info .rec-bullet{background:var(--green);}
+.rec-content h4{font-size:13px;font-weight:700;margin-bottom:2px;}
+.rec-content p{font-size:12px;color:var(--grey-dark);line-height:1.4;}
+
+/* ── WEEKLY TABLE ── */
+.week-table{
+  width:100%;border-collapse:collapse;
+  font-size:13px;
+  opacity:0;animation:fadeUp .4s .25s forwards;
+}
+.week-table th{
+  background:var(--navy);color:white;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  padding:10px 14px;text-align:left;
+}
+.week-table th:first-child{border-radius:8px 0 0 0;}
+.week-table th:last-child{border-radius:0 8px 0 0;}
+.week-table td{
+  padding:10px 14px;
+  border-bottom:1px solid var(--grey-light);
+  vertical-align:middle;
+}
+.week-table tr:hover td{background:var(--off-white);}
+.week-table tr:last-child td{border-bottom:none;}
+.shift-badge{
+  display:inline-block;
+  padding:2px 10px;border-radius:20px;
+  font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;
+}
+.shift-day{background:#dbeafe;color:#1d4ed8;}
+.shift-night{background:#ede9fe;color:#5b21b6;}
+.hours-bar{
+  display:flex;align-items:center;gap:8px;
+}
+.bar-track{
+  flex:1;height:6px;background:var(--grey-light);border-radius:3px;
+  overflow:hidden;
+}
+.bar-fill{height:100%;border-radius:3px;transition:width .6s ease;}
+.bar-ok{background:var(--green);}
+.bar-warn{background:var(--amber);}
+.bar-bad{background:var(--red);}
+.hours-num{font-weight:600;font-size:12px;white-space:nowrap;}
+
+/* ── CHART AREA ── */
+.chart-wrap{
+  background:white;border-radius:12px;
+  padding:24px;box-shadow:var(--shadow);
+  margin-bottom:24px;
+  opacity:0;animation:fadeUp .4s .3s forwards;
+}
+.chart-title{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:16px;font-weight:700;letter-spacing:1px;
+  color:var(--navy);text-transform:uppercase;
+  margin-bottom:16px;
+  display:flex;align-items:center;gap:8px;
+}
+.chart-title::before{content:'';display:block;width:4px;height:18px;background:var(--red);border-radius:2px;}
+
+/* ── PEAK SCENARIO ── */
+.peak-section{
+  background:linear-gradient(135deg,#fff8f8 0%,#fff 100%);
+  border:1.5px solid rgba(227,0,27,0.15);
+  border-radius:10px;padding:16px;margin-top:20px;
+}
+.peak-toggle-header{
+  display:flex;align-items:center;gap:10px;
+  cursor:pointer;user-select:none;
+}
+.peak-toggle-header h3{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:14px;font-weight:700;letter-spacing:1px;
+  text-transform:uppercase;color:var(--red);
+  flex:1;
+}
+.peak-toggle-arrow{
+  transition:transform .2s;font-size:12px;color:var(--red);
+}
+.peak-toggle-arrow.open{transform:rotate(180deg);}
+.peak-body{display:none;margin-top:14px;}
+.peak-body.open{display:block;}
+
+/* ── HEADCOUNT BREAKDOWN ── */
+.breakdown-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:10px;margin-bottom:16px;
+}
+.breakdown-item{
+  background:var(--off-white);
+  border-radius:8px;padding:14px;
+  text-align:center;
+}
+.breakdown-item .val{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:28px;font-weight:900;color:var(--navy);
+}
+.breakdown-item .lbl{
+  font-size:11px;font-weight:600;letter-spacing:1px;
+  color:var(--grey-dark);text-transform:uppercase;margin-top:2px;
+}
+.breakdown-item.accent .val{color:var(--red);}
+
+/* ── EMPTY STATE ── */
+.empty-state{
+  text-align:center;padding:60px 32px;
+  color:var(--grey-mid);
+}
+.empty-state svg{width:64px;height:64px;opacity:0.3;margin-bottom:16px;}
+.empty-state h3{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:20px;font-weight:700;color:var(--grey-mid);
+  text-transform:uppercase;margin-bottom:6px;
+}
+.empty-state p{font-size:13px;}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(12px);}
+  to{opacity:1;transform:translateY(0);}
+}
+@keyframes pulse{
+  0%,100%{opacity:1;}50%{opacity:.6;}
+}
+
+/* ── SCENARIO COMPARE ── */
+.compare-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  margin-bottom:24px;
+  opacity:0;animation:fadeUp .4s .35s forwards;
+}
+.compare-card{
+  background:white;border-radius:10px;
+  padding:16px;box-shadow:var(--shadow);
+  border-top:3px solid var(--grey-light);
+}
+.compare-card.best{border-top-color:var(--green);}
+.compare-card.ok-c{border-top-color:var(--amber);}
+.compare-card.fail-c{border-top-color:var(--red);}
+.compare-card h4{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:13px;font-weight:700;letter-spacing:1px;
+  text-transform:uppercase;margin-bottom:10px;
+  color:var(--navy);
+}
+.compare-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:5px 0;border-bottom:1px solid var(--grey-light);
+  font-size:12px;
+}
+.compare-row:last-child{border-bottom:none;}
+.compare-row .k{color:var(--grey-dark);}
+.compare-row .v{font-weight:700;}
+
+/* ── FOOTER ── */
+footer{
+  background:var(--navy);
+  padding:20px 32px;
+  margin-top:60px;
+}
+.footer-inner{
+  max-width:1400px;margin:0 auto;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.footer-inner p{
+  font-size:12px;color:rgba(255,255,255,0.4);
+  font-weight:300;
+}
+.footer-inner span{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:13px;font-weight:700;letter-spacing:1px;
+  color:rgba(255,255,255,0.3);text-transform:uppercase;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:var(--off-white);}
+::-webkit-scrollbar-thumb{background:var(--grey-mid);border-radius:3px;}
+
+/* ── TOOLTIP ── */
+.tooltip{position:relative;display:inline-block;cursor:help;}
+.tooltip-text{
+  display:none;position:absolute;bottom:120%;left:50%;transform:translateX(-50%);
+  background:var(--navy);color:white;font-size:11px;
+  padding:6px 10px;border-radius:6px;white-space:nowrap;z-index:50;
+  pointer-events:none;
+}
+.tooltip:hover .tooltip-text{display:block;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr;}
+  .compare-grid{grid-template-columns:1fr;}
+  .main{padding:16px;}
+}
 </style>
 </head>
-
 <body>
 
-<header>LINEHAUL PLANNER</header>
+<!-- HEADER -->
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M20 8H4v12h16V8zM4 6l4-4h8l4 4M12 10v8M8 14h8"/></svg>
+      </div>
+      <div class="logo-text">Linehaul <span>Planner</span></div>
+    </div>
+    <div class="header-badge">Workforce Planning Engine</div>
+  </div>
+</header>
 
+<!-- HERO -->
 <div class="hero">
-  <h1>Driving innovation through culture</h1>
-  <p>Operational workforce planning engine</p>
+  <div class="hero-inner">
+    <h1>Plan. <span>Optimise.</span> Deliver.</h1>
+    <p>Input your operational criteria and instantly see headcount requirements, hour guarantees, and the best scheduling configurations — no guesswork.</p>
+  </div>
 </div>
 
+<!-- MAIN -->
 <div class="main">
-<div class="grid">
+  <div class="layout">
 
-<!-- INPUT -->
-<div class="panel">
-  <div class="panel-header">Inputs</div>
-  <div class="panel-body">
+    <!-- ═══════ LEFT: INPUTS ═══════ -->
+    <div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" fill="white"/></svg>
+          </div>
+          <h2>Scenario Inputs</h2>
+        </div>
+        <div class="panel-body">
 
-    <div class="field">
-      <label>Day Teams</label>
-      <input id="dayTeams" type="number" value="4">
+          <!-- TEAM STRUCTURE -->
+          <div class="section-label">Team Structure</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Day Teams <span class="tooltip">ℹ<span class="tooltip-text">Baseline day shift teams</span></span></label>
+              <input type="number" id="dayTeams" value="4" min="1" max="20"/>
+            </div>
+            <div class="field">
+              <label>Night Teams</label>
+              <input type="number" id="nightTeams" value="4" min="1" max="20"/>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>People Per Team</label>
+              <input type="number" id="teamSize" value="5" min="2" max="20"/>
+            </div>
+            <div class="field">
+              <label>Scanners Per Team</label>
+              <input type="number" id="scannersPerTeam" value="1" min="1" max="5"/>
+            </div>
+          </div>
+
+          <!-- SHIFT RULES -->
+          <div class="section-label">Shift Rules</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Day Shift Hours</label>
+              <input type="number" id="dayHours" value="9" min="1" max="16" step="0.5"/>
+            </div>
+            <div class="field">
+              <label>Night Shift Hours</label>
+              <input type="number" id="nightHours" value="11.5" min="1" max="16" step="0.5"/>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Max Hours / Week <span style="color:var(--red);font-size:10px;">(HARD CAP)</span></label>
+              <input type="number" id="maxHours" value="45" min="20" max="80"/>
+            </div>
+            <div class="field">
+              <label>Min Target / Week <span style="color:var(--grey-mid);font-size:10px;">(SOFT)</span></label>
+              <input type="number" id="minTarget" value="40" min="10" max="80"/>
+            </div>
+          </div>
+
+          <!-- WORKFORCE -->
+          <div class="section-label">Workforce</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Absenteeism %</label>
+              <input type="number" id="absenteeism" value="10" min="0" max="50" step="0.5"/>
+            </div>
+            <div class="field">
+              <label>Planning Horizon (weeks)</label>
+              <input type="number" id="weeks" value="4" min="1" max="52"/>
+            </div>
+          </div>
+
+          <!-- OPERATING DAYS -->
+          <div class="section-label">Operating Days</div>
+          <div class="toggle-group" id="dayToggles">
+            <button class="toggle-btn active" data-day="mon">Mon</button>
+            <button class="toggle-btn active" data-day="tue">Tue</button>
+            <button class="toggle-btn active" data-day="wed">Wed</button>
+            <button class="toggle-btn active" data-day="thu">Thu</button>
+            <button class="toggle-btn active" data-day="fri">Fri</button>
+            <button class="toggle-btn" data-day="sat">Sat</button>
+            <button class="toggle-btn" data-day="sun">Sun</button>
+          </div>
+          <div class="check-row">
+            <input type="checkbox" id="satDayOnly"/>
+            <span>Saturday: Day shift only (no night)</span>
+          </div>
+          <div class="check-row">
+            <input type="checkbox" id="allowTopUp" checked/>
+            <span>Allow top-up shifts to close hour gaps</span>
+          </div>
+
+          <!-- PEAK SCENARIO -->
+          <div class="peak-section">
+            <div class="peak-toggle-header" onclick="togglePeak()">
+              <h3>⚡ Peak / Demand Spike</h3>
+              <div class="peak-toggle-arrow" id="peakArrow">▼</div>
+            </div>
+            <div class="peak-body" id="peakBody">
+              <div class="field-row" style="margin-top:0">
+                <div class="field">
+                  <label>Peak Day Teams</label>
+                  <input type="number" id="peakDay" value="6" min="1" max="20"/>
+                </div>
+                <div class="field">
+                  <label>Peak Night Teams</label>
+                  <input type="number" id="peakNight" value="5" min="1" max="20"/>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label>Peak Start Week</label>
+                  <input type="number" id="peakStart" value="2" min="1" max="52"/>
+                </div>
+                <div class="field">
+                  <label>Peak Duration (weeks)</label>
+                  <input type="number" id="peakDuration" value="2" min="1" max="20"/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="runPlan()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21"/></svg>
+              Run Plan
+            </button>
+            <button class="btn btn-secondary" onclick="exportCSV()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              Download CSV
+            </button>
+          </div>
+
+        </div>
+      </div>
     </div>
 
-    <div class="field">
-      <label>Night Teams</label>
-      <input id="nightTeams" type="number" value="4">
+    <!-- ═══════ RIGHT: RESULTS ═══════ -->
+    <div id="resultsPanel">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M9 9h6M9 12h6M9 15h4"/>
+        </svg>
+        <h3>No Scenario Run Yet</h3>
+        <p>Set your inputs and click <strong>Run Plan</strong> to see headcount, hours, and scheduling recommendations.</p>
+      </div>
     </div>
-
-    <div class="field">
-      <label>Team Size</label>
-      <input id="teamSize" type="number" value="5">
-    </div>
-
-    <div class="field">
-      <label>Day Hours</label>
-      <input id="dayHours" type="number" value="9">
-    </div>
-
-    <div class="field">
-      <label>Night Hours</label>
-      <input id="nightHours" type="number" value="11.5">
-    </div>
-
-    <div class="field">
-      <label>OT Cap</label>
-      <input id="maxHours" type="number" value="45">
-    </div>
-
-    <div class="field">
-      <label>Min Target</label>
-      <input id="minTarget" type="number" value="40">
-    </div>
-
-    <div class="field">
-      <label>Absenteeism %</label>
-      <input id="absenteeism" type="number" value="10">
-    </div>
-
-    <div class="field">
-      <label>Weeks</label>
-      <input id="weeks" type="number" value="4">
-    </div>
-
-    <button onclick="run()">Run Plan</button>
 
   </div>
 </div>
 
-<!-- OUTPUT -->
-<div id="out"></div>
-
-</div>
-</div>
+<footer>
+  <div class="footer-inner">
+    <p>Linehaul Planner — Internal Workforce Planning Tool</p>
+    <span>v2.0</span>
+  </div>
+</footer>
 
 <script>
+// ═══════ STATE ═══════
+let lastResult = null;
+let lastInput  = null;
+let hoursChart = null;
 
-function run(){
+// ═══════ DAY TOGGLES ═══════
+document.querySelectorAll('.toggle-btn[data-day]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mandatory = ['mon','tue','wed','thu','fri'];
+    if(mandatory.includes(btn.dataset.day)){
+      btn.classList.toggle('active');
+    } else {
+      btn.classList.toggle('active');
+    }
+  });
+});
 
-const dT = +dayTeams.value;
-const nT = +nightTeams.value;
-const tS = +teamSize.value;
-const dH = +dayHours.value;
-const nH = +nightHours.value;
-const cap = +maxHours.value;
-const min = +minTarget.value;
-const ab = +absenteeism.value/100;
-const weeks = +document.getElementById('weeks').value;
+function getActiveDays(){
+  return Array.from(document.querySelectorAll('.toggle-btn[data-day].active'))
+    .map(b => b.dataset.day);
+}
 
-const totalTeams = dT + nT;
-const core = totalTeams * tS;
-const pool = Math.ceil(core * ab);
-const total = core + pool;
+function togglePeak(){
+  const body  = document.getElementById('peakBody');
+  const arrow = document.getElementById('peakArrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
 
-// weekly model
-let weeksArr = [];
+// ═══════ CORE CALC ═══════
+function calcHours(teams, dayT, nightT, dayH, nightH, maxH, baseDays, weeks, allowTopUp, minTarget, satDayOnly){
+  const results = [];
+  for(let w=0; w<weeks; w++){
+    const isDayWeek = w % 2 === 0;
+    let rawHours;
+    if(isDayWeek){
+      rawHours = baseDays * dayH;
+    } else {
+      // night: if satDayOnly, Saturday is day not night
+      const nightDays = satDayOnly ? baseDays - (getActiveDays().includes('sat') ? 1 : 0) : baseDays;
+      rawHours = nightDays * nightH;
+      if(satDayOnly && getActiveDays().includes('sat')){
+        rawHours += dayH; // sat is day shift even in night week
+      }
+    }
+    const capped = Math.min(rawHours, maxH);
+    results.push({week: w+1, shift: isDayWeek ? 'Day' : 'Night', raw: rawHours, hours: capped});
+  }
+  // top-up
+  if(allowTopUp){
+    results.forEach(r => {
+      if(r.hours < minTarget){
+        const gap = minTarget - r.hours;
+        // can add up to remaining capacity before cap
+        const addable = maxH - r.hours;
+        r.topUp = Math.min(gap, addable);
+        r.hours = Math.min(r.hours + r.topUp, maxH);
+      }
+    });
+  }
+  return results;
+}
 
-for(let w=1; w<=weeks; w++){
+function runPlan(){
+  const input = gatherInput();
+  lastInput = input;
 
-  let isDay = w % 2 === 1;
+  const {
+    dayTeams, nightTeams, teamSize, scannersPerTeam,
+    dayHours, nightHours, maxHours, minTarget,
+    absenteeism, weeks, allowTopUp, satDayOnly,
+    peakDay, peakNight, peakStart, peakDuration
+  } = input;
 
-  let hours = isDay
-    ? dH * 5
-    : nH * 5;
+  const activeDays = getActiveDays();
+  const baseDays   = activeDays.length;
+  const hasSat     = activeDays.includes('sat');
+  const hasSun     = activeDays.includes('sun');
 
-  hours = Math.min(hours, cap);
+  // Headcount
+  const totalTeams   = dayTeams + nightTeams;
+  const coreDaily    = totalTeams * teamSize;
+  const scanners     = totalTeams * scannersPerTeam;
+  const loaders      = coreDaily - scanners;
+  const poolSize     = Math.ceil(coreDaily * (absenteeism / 100));
+  const totalPeople  = coreDaily + poolSize;
 
-  weeksArr.push({
-    week:w,
-    type:isDay ? "Day" : "Night",
-    hours
+  // Hours per person per week (rotated)
+  const weeklyBreakdown = calcHours(totalTeams, dayTeams, nightTeams, dayHours, nightHours, maxHours, baseDays, weeks, allowTopUp, minTarget, satDayOnly);
+
+  const totalHrs  = weeklyBreakdown.reduce((s,r) => s+r.hours, 0);
+  const avgWeekly = totalHrs / weeks;
+  const minWeekly = Math.min(...weeklyBreakdown.map(r=>r.hours));
+  const maxWeekly = Math.min(Math.max(...weeklyBreakdown.map(r=>r.hours)), maxHours);
+
+  // Feasibility
+  let feasibility = 'ok';
+  let feasMsg     = `All employees can achieve ≥ ${minTarget} hrs/week within the ${maxHours}hr cap.`;
+  if(minWeekly < minTarget && maxWeekly >= minTarget){
+    feasibility = 'warn';
+    feasMsg     = `Some weeks fall below the ${minTarget}hr target (night weeks reach ${minWeekly.toFixed(1)} hrs). Consider top-up shifts or Saturday.`;
+  } else if(avgWeekly < minTarget){
+    feasibility = 'fail';
+    feasMsg     = `Average weekly hours (${avgWeekly.toFixed(1)}) are below target (${minTarget}). Action required — see recommendations.`;
+  }
+
+  // Peak scenario
+  let peakResult = null;
+  if(peakDay > 0 || peakNight > 0){
+    const peakTeams   = peakDay + peakNight;
+    const peakDaily   = peakTeams * teamSize;
+    const peakPool    = Math.ceil(peakDaily * (absenteeism / 100));
+    const peakTotal   = peakDaily + peakPool;
+    const extraPeople = Math.max(0, peakTotal - totalPeople);
+    peakResult = {peakTotal, extraPeople, peakDay, peakNight, peakStart, peakDuration};
+  }
+
+  // Operating mode comparisons
+  const compare = buildCompare(dayTeams, nightTeams, teamSize, scannersPerTeam, dayHours, nightHours, maxHours, minTarget, absenteeism, weeks, allowTopUp, satDayOnly);
+
+  lastResult = {
+    totalPeople, coreDaily, poolSize, scanners, loaders,
+    avgWeekly, minWeekly, maxWeekly, weeklyBreakdown,
+    feasibility, feasMsg, baseDays, peakResult, compare,
+    input
+  };
+
+  renderResults(lastResult);
+}
+
+function buildCompare(dt, nt, ts, st, dh, nh, mh, mt, ab, wk, tu, sdo){
+  const scenarios = [
+    {label:'Mon – Fri', days:5, sat:false, sun:false},
+    {label:'Mon – Sat', days:6, sat:true,  sun:false},
+    {label:'Mon – Sun', days:7, sat:true,  sun:true},
+  ];
+  return scenarios.map(s => {
+    const core   = (dt+nt)*ts;
+    const pool   = Math.ceil(core*(ab/100));
+    const total  = core+pool;
+    const wb     = calcHours(dt+nt, dt, nt, dh, nh, mh, s.days, wk, tu, mt, sdo && s.sat);
+    const avg    = wb.reduce((a,r)=>a+r.hours,0)/wk;
+    const minH   = Math.min(...wb.map(r=>r.hours));
+    const status = minH >= mt ? 'best' : avg >= mt ? 'ok-c' : 'fail-c';
+    return {label:s.label, total, avg:avg.toFixed(1), minH:minH.toFixed(1), status};
   });
 }
 
-const avg = weeksArr.reduce((a,b)=>a+b.hours,0)/weeks;
-const minW = Math.min(...weeksArr.map(w=>w.hours));
-const maxW = Math.max(...weeksArr.map(w=>w.hours));
-
-let status = avg >= min ? "ok" : "fail";
-
-let html = `
-<div class="panel">
-<div class="panel-header">Summary</div>
-<div class="panel-body">
-
-<div class="metrics">
-<div class="card"><h3>Total Staff</h3><strong>${total}</strong></div>
-<div class="card"><h3>Core Staff</h3><strong>${core}</strong></div>
-<div class="card"><h3>Pool</h3><strong>${pool}</strong></div>
-<div class="card"><h3>Avg Hours</h3><strong>${avg.toFixed(1)}</strong></div>
-</div>
-
-<p style="margin-top:10px" class="${status}">
-${status === "ok"
-? "✔ PLAN IS FEASIBLE"
-: "✕ PLAN NOT FEASIBLE"}
-</p>
-
-<h3 style="margin-top:15px">How to Run This Schedule</h3>
-
-<table>
-<tr><th>Week</th><th>Type</th><th>Hours</th></tr>
-${weeksArr.map(w=>`
-<tr>
-<td>W${w.week}</td>
-<td>${w.type}</td>
-<td>${w.hours}</td>
-</tr>`).join("")}
-</table>
-
-<p style="margin-top:12px;font-size:12px">
-Day teams run Mon–Fri. Night teams alternate weekly. 
-Adjust by shifting 1 team into half-day rotation if OT cap is breached.
-</p>
-
-</div>
-</div>
-`;
-
-out.innerHTML = html;
-
+function gatherInput(){
+  return {
+    dayTeams:       +document.getElementById('dayTeams').value,
+    nightTeams:     +document.getElementById('nightTeams').value,
+    teamSize:       +document.getElementById('teamSize').value,
+    scannersPerTeam:+document.getElementById('scannersPerTeam').value,
+    dayHours:       +document.getElementById('dayHours').value,
+    nightHours:     +document.getElementById('nightHours').value,
+    maxHours:       +document.getElementById('maxHours').value,
+    minTarget:      +document.getElementById('minTarget').value,
+    absenteeism:    +document.getElementById('absenteeism').value,
+    weeks:          +document.getElementById('weeks').value,
+    allowTopUp:     document.getElementById('allowTopUp').checked,
+    satDayOnly:     document.getElementById('satDayOnly').checked,
+    peakDay:        +document.getElementById('peakDay').value,
+    peakNight:      +document.getElementById('peakNight').value,
+    peakStart:      +document.getElementById('peakStart').value,
+    peakDuration:   +document.getElementById('peakDuration').value,
+  };
 }
 
+// ═══════ RECOMMENDATIONS ═══════
+function buildRecs(r, input){
+  const recs = [];
+  const {feasibility, minWeekly, avgWeekly, baseDays} = r;
+  const {minTarget, maxHours, allowTopUp} = input;
+  const activeDays = getActiveDays();
+
+  if(feasibility === 'ok'){
+    recs.push({type:'info', num:1, title:'Plan is feasible', desc:`All employees meet the ${minTarget}hr/week target within the ${maxHours}hr cap. No structural issues.`});
+    recs.push({type:'secondary', num:2, title:'Maintain pool ratio', desc:`Your absenteeism pool of ${r.poolSize} people ensures continuity. Review if absenteeism rate changes.`});
+  } else {
+    if(feasibility === 'warn'){
+      recs.push({type:'primary', num:1, title:'Night weeks fall short', desc:`Night rotation produces ${minWeekly.toFixed(1)} hrs/week vs your ${minTarget}hr target. The fix below will close this.`});
+      if(!allowTopUp){
+        recs.push({type:'primary', num:2, title:'Enable top-up shifts', desc:`A short top-up shift (same day late start or extra day) can add ${(minTarget-minWeekly).toFixed(1)} hrs to night weeks without breaching the ${maxHours}hr cap.`});
+      } else {
+        recs.push({type:'info', num:2, title:'Top-up is enabled', desc:`With top-up shifts active, night workers can reach close to ${minTarget}hrs. Confirm operational capacity for the additional shift.`});
+      }
+      if(!activeDays.includes('sat')){
+        recs.push({type:'secondary', num:3, title:'Add Saturday', desc:`Adding Saturday (even day shift only) adds ${input.dayHours} hrs to night workers in alternate weeks, fully bridging the gap.`});
+      }
+    } else {
+      recs.push({type:'primary', num:1, title:'Target is not achievable', desc:`Average ${avgWeekly.toFixed(1)} hrs/week is below your ${minTarget}hr target. Multiple changes required.`});
+      recs.push({type:'primary', num:2, title:'Increase operating days', desc:`Move to Mon–Sat or Mon–Sun to add hours to all employees without changing team structure.`});
+      recs.push({type:'secondary', num:3, title:'Rebalance team split', desc:`Shift more teams to day shift — day workers get ${(baseDays * input.dayHours).toFixed(0)} hrs/week vs ${(baseDays * input.nightHours).toFixed(0)} for night, giving more natural headroom.`});
+      recs.push({type:'secondary', num:4, title:'Reduce pool size', desc:`Fewer total employees means more shifts per person. Consider if absenteeism rate justifies the current pool.`});
+    }
+  }
+
+  // Peak rec
+  if(r.peakResult && r.peakResult.extraPeople > 0){
+    recs.push({type:'primary', num:'!', title:`Peak: ${r.peakResult.extraPeople} additional staff needed`, desc:`Week ${r.peakResult.peakStart} for ${r.peakResult.peakDuration} weeks: ${r.peakResult.peakDay}D/${r.peakResult.peakNight}N teams require ${r.peakResult.peakTotal} total people — ${r.peakResult.extraPeople} above your current pool. Pre-arrange casual staff now.`});
+  }
+
+  return recs;
+}
+
+// ═══════ RENDER ═══════
+function renderResults(r){
+  const panel = document.getElementById('resultsPanel');
+  const {input} = r;
+  const recs = buildRecs(r, input);
+
+  const fClass = r.feasibility === 'ok' ? 'ok' : r.feasibility === 'warn' ? 'warn' : 'fail';
+  const fIcon  = r.feasibility === 'ok' ? '✓' : r.feasibility === 'warn' ? '⚠' : '✕';
+
+  // Weekly table rows
+  const tableRows = r.weeklyBreakdown.map(w => {
+    const pct      = (w.hours / input.maxHours) * 100;
+    const barClass = w.hours >= input.minTarget ? 'bar-ok' : w.hours >= input.minTarget * 0.9 ? 'bar-warn' : 'bar-bad';
+    const topUpNote= w.topUp ? `<span style="color:var(--green);font-size:11px;"> +${w.topUp.toFixed(1)} top-up</span>` : '';
+    return `<tr>
+      <td><strong>Week ${w.week}</strong></td>
+      <td><span class="shift-badge shift-${w.shift.toLowerCase()}">${w.shift}</span></td>
+      <td>
+        <div class="hours-bar">
+          <div class="bar-track"><div class="bar-fill ${barClass}" style="width:${pct}%"></div></div>
+          <span class="hours-num">${w.hours.toFixed(1)}h${topUpNote}</span>
+        </div>
+      </td>
+      <td style="font-size:12px;color:var(--grey-dark);">${w.hours >= input.minTarget ? '✓' : `↑${(input.minTarget - w.hours).toFixed(1)}h needed`}</td>
+    </tr>`;
+  }).join('');
+
+  // Compare cards
+  const compareCards = r.compare.map(c => `
+    <div class="compare-card ${c.status}">
+      <h4>${c.label}</h4>
+      <div class="compare-row"><span class="k">Total Staff</span><span class="v">${c.total}</span></div>
+      <div class="compare-row"><span class="k">Avg Hours/Week</span><span class="v">${c.avg}h</span></div>
+      <div class="compare-row"><span class="k">Min Week</span><span class="v">${c.minH}h</span></div>
+      <div class="compare-row"><span class="k">Status</span><span class="v" style="color:${c.status==='best'?'var(--green)':c.status==='ok-c'?'var(--amber)':'var(--red)'}">${c.status==='best'?'✓ Target met':c.status==='ok-c'?'⚠ Borderline':'✕ Below target'}</span></div>
+    </div>
+  `).join('');
+
+  // Rec items
+  const recItems = recs.map(rec => `
+    <li class="rec-item ${rec.type}">
+      <div class="rec-bullet">${rec.num}</div>
+      <div class="rec-content">
+        <h4>${rec.title}</h4>
+        <p>${rec.desc}</p>
+      </div>
+    </li>
+  `).join('');
+
+  // Peak block
+  const peakHTML = r.peakResult ? `
+    <div class="panel" style="margin-bottom:24px;opacity:0;animation:fadeUp .4s .4s forwards;">
+      <div class="panel-header" style="background:var(--red);">
+        <div class="panel-icon" style="background:rgba(255,255,255,0.2);">
+          <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white"/></svg>
+        </div>
+        <h2>Peak Demand Scenario</h2>
+      </div>
+      <div class="panel-body">
+        <div class="breakdown-grid">
+          <div class="breakdown-item accent">
+            <div class="val">${r.peakResult.peakTotal}</div>
+            <div class="lbl">Peak Headcount</div>
+          </div>
+          <div class="breakdown-item">
+            <div class="val" style="color:${r.peakResult.extraPeople>0?'var(--red)':'var(--green)'};">${r.peakResult.extraPeople > 0 ? '+'+r.peakResult.extraPeople : '✓ Covered'}</div>
+            <div class="lbl">Additional Staff Needed</div>
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--grey-dark);">
+          ${r.peakResult.peakDay}D + ${r.peakResult.peakNight}N teams from week ${r.peakResult.peakStart} for ${r.peakResult.peakDuration} week${r.peakResult.peakDuration>1?'s':''}.
+          ${r.peakResult.extraPeople > 0 ? `<strong style="color:var(--red)">Pre-arrange ${r.peakResult.extraPeople} additional staff before week ${r.peakResult.peakStart}.</strong>` : `<strong style="color:var(--green)">Your current pool can absorb this peak.</strong>`}
+        </p>
+      </div>
+    </div>
+  ` : '';
+
+  panel.innerHTML = `
+    <!-- HEADCOUNT METRICS -->
+    <div class="results-grid" style="margin-bottom:24px;">
+      <div class="metric-card navy" style="animation-delay:.05s">
+        <div class="metric-label">Total Workforce</div>
+        <div class="metric-value">${r.totalPeople}</div>
+        <div class="metric-sub">Core: ${r.coreDaily} · Pool: ${r.poolSize}</div>
+      </div>
+      <div class="metric-card red" style="animation-delay:.1s">
+        <div class="metric-label">Scanners Required</div>
+        <div class="metric-value red">${r.scanners}</div>
+        <div class="metric-sub">Specialist position — plan separately</div>
+      </div>
+      <div class="metric-card" style="animation-delay:.15s">
+        <div class="metric-label">Loaders</div>
+        <div class="metric-value">${r.loaders}</div>
+        <div class="metric-sub">Interchangeable roles</div>
+      </div>
+      <div class="metric-card ${r.feasibility==='ok'?'green':r.feasibility==='warn'?'amber':'red'}" style="animation-delay:.2s">
+        <div class="metric-label">Avg Hours / Week</div>
+        <div class="metric-value ${r.feasibility==='ok'?'green':r.feasibility==='warn'?'amber':''}">${r.avgWeekly.toFixed(1)}</div>
+        <div class="metric-sub">Min: ${r.minWeekly.toFixed(1)}h · Max: ${r.maxWeekly.toFixed(1)}h</div>
+      </div>
+    </div>
+
+    <!-- STATUS BANNER -->
+    <div class="status-banner ${fClass}">
+      <div class="status-icon">${fIcon}</div>
+      <div class="status-text">
+        <h3>${fClass==='ok'?'Plan Feasible':fClass==='warn'?'Plan Partially Feasible':'Plan Not Feasible'}</h3>
+        <p>${r.feasMsg}</p>
+      </div>
+    </div>
+
+    <!-- WEEKLY BREAKDOWN -->
+    <div class="panel" style="margin-bottom:24px;opacity:0;animation:fadeUp .4s .15s forwards;">
+      <div class="panel-header">
+        <div class="panel-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" fill="none" stroke="white" stroke-width="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke="white" stroke-width="2"/></svg></div>
+        <h2>${input.weeks}-Week Rotation Breakdown</h2>
+      </div>
+      <div class="panel-body" style="padding:0;">
+        <table class="week-table">
+          <thead><tr><th>Week</th><th>Shift</th><th>Hours Achievable</th><th>vs Target</th></tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- OPERATING MODEL COMPARISON -->
+    <div class="chart-title" style="opacity:0;animation:fadeUp .4s .2s forwards;">Operating Day Comparison</div>
+    <div class="compare-grid">${compareCards}</div>
+
+    <!-- HOURS CHART -->
+    <div class="chart-wrap">
+      <div class="chart-title">Weekly Hours per Employee</div>
+      <canvas id="hoursChart" height="160"></canvas>
+    </div>
+
+    ${peakHTML}
+
+    <!-- RECOMMENDATIONS -->
+    <div class="panel" style="margin-bottom:0;opacity:0;animation:fadeUp .4s .45s forwards;">
+      <div class="panel-header">
+        <div class="panel-icon"><svg viewBox="0 0 24 24"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" fill="white"/></svg></div>
+        <h2>Recommendations</h2>
+      </div>
+      <div class="panel-body">
+        <ul class="rec-list">${recItems}</ul>
+      </div>
+    </div>
+  `;
+
+  // Build chart
+  setTimeout(() => {
+    const ctx = document.getElementById('hoursChart');
+    if(!ctx) return;
+    if(hoursChart) hoursChart.destroy();
+    const labels = r.weeklyBreakdown.map(w => `W${w.week} (${w.shift})`);
+    const data   = r.weeklyBreakdown.map(w => w.hours);
+    const colors = data.map(h => h >= input.minTarget ? '#00a651' : h >= input.minTarget * 0.9 ? '#f59e0b' : '#E3001B');
+    hoursChart = new Chart(ctx, {
+      type:'bar',
+      data:{
+        labels,
+        datasets:[
+          {
+            label:'Hours',
+            data,
+            backgroundColor: colors,
+            borderRadius:5,
+            borderSkipped:false,
+          },
+          {
+            label:'Min Target',
+            data: Array(data.length).fill(input.minTarget),
+            type:'line',
+            borderColor:'#002855',
+            borderWidth:2,
+            borderDash:[5,4],
+            pointRadius:0,
+            fill:false,
+            tension:0,
+          },
+          {
+            label:'Max Cap',
+            data: Array(data.length).fill(input.maxHours),
+            type:'line',
+            borderColor:'#E3001B',
+            borderWidth:1.5,
+            borderDash:[3,4],
+            pointRadius:0,
+            fill:false,
+            tension:0,
+          }
+        ]
+      },
+      options:{
+        responsive:true,
+        plugins:{
+          legend:{labels:{font:{family:'Barlow',size:12},color:'#5a6e85'}},
+          tooltip:{
+            callbacks:{
+              label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}h`
+            }
+          }
+        },
+        scales:{
+          y:{
+            min: Math.max(0, input.minTarget - 10),
+            grid:{color:'#e4e9f0'},
+            ticks:{color:'#5a6e85',font:{family:'Barlow',size:11}}
+          },
+          x:{
+            grid:{display:false},
+            ticks:{color:'#5a6e85',font:{family:'Barlow',size:11}}
+          }
+        }
+      }
+    });
+  }, 50);
+}
+
+// ═══════ CSV EXPORT ═══════
+function exportCSV(){
+  if(!lastResult){alert('Run a plan first.');return;}
+  const r = lastResult;
+  const i = lastInput;
+  const rows = [
+    ['LINEHAUL PLANNER — EXPORT','','',''],
+    ['Generated',new Date().toLocaleDateString('en-ZA'),'',''],
+    ['','','',''],
+    ['HEADCOUNT','','',''],
+    ['Total Workforce', r.totalPeople,'',''],
+    ['Core (daily required)', r.coreDaily,'',''],
+    ['Absenteeism Pool', r.poolSize,'',''],
+    ['Scanners', r.scanners,'',''],
+    ['Loaders', r.loaders,'',''],
+    ['','','',''],
+    ['SHIFT RULES','','',''],
+    ['Day Shift Hours', i.dayHours,'',''],
+    ['Night Shift Hours', i.nightHours,'',''],
+    ['Max Hours / Week (cap)', i.maxHours,'',''],
+    ['Min Target / Week', i.minTarget,'',''],
+    ['Absenteeism %', i.absenteeism,'',''],
+    ['','','',''],
+    ['HOURS SUMMARY','','',''],
+    ['Average Weekly Hours', r.avgWeekly.toFixed(1),'',''],
+    ['Minimum Week', r.minWeekly.toFixed(1),'',''],
+    ['Maximum Week', r.maxWeekly.toFixed(1),'',''],
+    ['Feasibility Status', r.feasibility.toUpperCase(),'',''],
+    ['','','',''],
+    ['WEEKLY BREAKDOWN','','',''],
+    ['Week','Shift','Hours','vs Target'],
+    ...r.weeklyBreakdown.map(w => [`Week ${w.week}`, w.shift, w.hours.toFixed(1), w.hours >= i.minTarget ? 'OK' : `Short by ${(i.minTarget - w.hours).toFixed(1)}h`]),
+    ['','','',''],
+    ['OPERATING DAY COMPARISON','','',''],
+    ['Schedule','Total Staff','Avg Hours','Min Week','Status'],
+    ...r.compare.map(c => [c.label, c.total, c.avg, c.minH, c.status==='best'?'Target Met':c.status==='ok-c'?'Borderline':'Below Target']),
+  ];
+
+  if(r.peakResult){
+    rows.push(['','','',''],['PEAK SCENARIO','','','']);
+    rows.push(['Peak Day Teams', i.peakDay,'','']);
+    rows.push(['Peak Night Teams', i.peakNight,'','']);
+    rows.push(['Peak Start Week', i.peakStart,'','']);
+    rows.push(['Peak Duration (weeks)', i.peakDuration,'','']);
+    rows.push(['Peak Total Headcount', r.peakResult.peakTotal,'','']);
+    rows.push(['Extra Staff Needed', r.peakResult.extraPeople,'','']);
+  }
+
+  const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `linehaul-plan-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
 </script>
 
 </body>
