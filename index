@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Linehaul Planner</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@500;700;800;900&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<style>
+:root {
+  --primary: #0097A7;
+  --primary-dark: #007C91;
+  --accent: #F2D34F;
+
+  --white: #fff;
+  --bg: #f4f7fa;
+  --text: #0b1f2a;
+
+  --green: #00a651;
+  --amber: #f59e0b;
+  --red: #e3001b;
+
+  --shadow: 0 2px 16px rgba(0,0,0,0.08);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:Barlow,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+/* HEADER */
+header{
+  background:var(--primary-dark);
+  padding:16px 24px;
+  color:white;
+  font-weight:800;
+}
+
+/* HERO */
+.hero{
+  background:var(--primary);
+  color:white;
+  padding:30px 24px;
+}
+.hero h1{
+  font-family:'Barlow Condensed';
+  font-size:34px;
+  text-transform:uppercase;
+}
+.hero p{opacity:0.85;margin-top:8px}
+
+/* LAYOUT */
+.main{padding:24px;max-width:1200px;margin:auto;}
+.grid{display:grid;grid-template-columns:350px 1fr;gap:20px}
+
+/* PANEL */
+.panel{
+  background:white;
+  border-radius:10px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+.panel-header{
+  background:var(--primary-dark);
+  color:white;
+  padding:12px;
+  font-weight:700;
+}
+.panel-body{padding:16px}
+
+/* INPUTS */
+.field{margin-bottom:12px}
+label{font-size:12px;font-weight:700;text-transform:uppercase}
+input,select{
+  width:100%;
+  padding:8px;
+  margin-top:4px;
+}
+
+/* BUTTON */
+button{
+  width:100%;
+  padding:10px;
+  border:none;
+  background:var(--red);
+  color:white;
+  font-weight:800;
+  cursor:pointer;
+}
+
+/* METRICS */
+.metrics{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+}
+.card{
+  background:white;
+  padding:12px;
+  border-radius:8px;
+  box-shadow:var(--shadow);
+}
+.card h3{font-size:12px;text-transform:uppercase}
+.card strong{font-size:22px}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:8px;border-bottom:1px solid #eee;font-size:12px}
+
+/* STATUS */
+.ok{color:var(--green);font-weight:700}
+.warn{color:var(--amber);font-weight:700}
+.fail{color:var(--red);font-weight:700}
+
+</style>
+</head>
+
+<body>
+
+<header>LINEHAUL PLANNER</header>
+
+<div class="hero">
+  <h1>Driving innovation through culture</h1>
+  <p>Operational workforce planning engine</p>
+</div>
+
+<div class="main">
+<div class="grid">
+
+<!-- INPUT -->
+<div class="panel">
+  <div class="panel-header">Inputs</div>
+  <div class="panel-body">
+
+    <div class="field">
+      <label>Day Teams</label>
+      <input id="dayTeams" type="number" value="4">
+    </div>
+
+    <div class="field">
+      <label>Night Teams</label>
+      <input id="nightTeams" type="number" value="4">
+    </div>
+
+    <div class="field">
+      <label>Team Size</label>
+      <input id="teamSize" type="number" value="5">
+    </div>
+
+    <div class="field">
+      <label>Day Hours</label>
+      <input id="dayHours" type="number" value="9">
+    </div>
+
+    <div class="field">
+      <label>Night Hours</label>
+      <input id="nightHours" type="number" value="11.5">
+    </div>
+
+    <div class="field">
+      <label>OT Cap</label>
+      <input id="maxHours" type="number" value="45">
+    </div>
+
+    <div class="field">
+      <label>Min Target</label>
+      <input id="minTarget" type="number" value="40">
+    </div>
+
+    <div class="field">
+      <label>Absenteeism %</label>
+      <input id="absenteeism" type="number" value="10">
+    </div>
+
+    <div class="field">
+      <label>Weeks</label>
+      <input id="weeks" type="number" value="4">
+    </div>
+
+    <button onclick="run()">Run Plan</button>
+
+  </div>
+</div>
+
+<!-- OUTPUT -->
+<div id="out"></div>
+
+</div>
+</div>
+
+<script>
+
+function run(){
+
+const dT = +dayTeams.value;
+const nT = +nightTeams.value;
+const tS = +teamSize.value;
+const dH = +dayHours.value;
+const nH = +nightHours.value;
+const cap = +maxHours.value;
+const min = +minTarget.value;
+const ab = +absenteeism.value/100;
+const weeks = +document.getElementById('weeks').value;
+
+const totalTeams = dT + nT;
+const core = totalTeams * tS;
+const pool = Math.ceil(core * ab);
+const total = core + pool;
+
+// weekly model
+let weeksArr = [];
+
+for(let w=1; w<=weeks; w++){
+
+  let isDay = w % 2 === 1;
+
+  let hours = isDay
+    ? dH * 5
+    : nH * 5;
+
+  hours = Math.min(hours, cap);
+
+  weeksArr.push({
+    week:w,
+    type:isDay ? "Day" : "Night",
+    hours
+  });
+}
+
+const avg = weeksArr.reduce((a,b)=>a+b.hours,0)/weeks;
+const minW = Math.min(...weeksArr.map(w=>w.hours));
+const maxW = Math.max(...weeksArr.map(w=>w.hours));
+
+let status = avg >= min ? "ok" : "fail";
+
+let html = `
+<div class="panel">
+<div class="panel-header">Summary</div>
+<div class="panel-body">
+
+<div class="metrics">
+<div class="card"><h3>Total Staff</h3><strong>${total}</strong></div>
+<div class="card"><h3>Core Staff</h3><strong>${core}</strong></div>
+<div class="card"><h3>Pool</h3><strong>${pool}</strong></div>
+<div class="card"><h3>Avg Hours</h3><strong>${avg.toFixed(1)}</strong></div>
+</div>
+
+<p style="margin-top:10px" class="${status}">
+${status === "ok"
+? "✔ PLAN IS FEASIBLE"
+: "✕ PLAN NOT FEASIBLE"}
+</p>
+
+<h3 style="margin-top:15px">How to Run This Schedule</h3>
+
+<table>
+<tr><th>Week</th><th>Type</th><th>Hours</th></tr>
+${weeksArr.map(w=>`
+<tr>
+<td>W${w.week}</td>
+<td>${w.type}</td>
+<td>${w.hours}</td>
+</tr>`).join("")}
+</table>
+
+<p style="margin-top:12px;font-size:12px">
+Day teams run Mon–Fri. Night teams alternate weekly. 
+Adjust by shifting 1 team into half-day rotation if OT cap is breached.
+</p>
+
+</div>
+</div>
+`;
+
+out.innerHTML = html;
+
+}
+
+</script>
+
+</body>
+</html>
