@@ -202,7 +202,7 @@ footer{background:var(--navy);padding:16px 32px;margin-top:60px;}
       <div class="logo-mark"><svg viewBox="0 0 24 24" width="19" height="19" fill="white"><path d="M20 8H4v12h16V8zM4 6l4-4h8l4 4M12 11v6M9 14h6"/></svg></div>
       <div class="logo-text">Linehaul <span>Planner</span></div>
     </div>
-    <div class="header-badge">Workforce Planning Engine · PKL</div>
+    <div class="header-badge">Workforce Planning Engine</div>
   </div>
 </header>
 
@@ -240,8 +240,8 @@ footer{background:var(--navy);padding:16px 32px;margin-top:60px;}
 
     <div class="sec-lbl">Team Structure</div>
     <div class="field-row">
-      <div class="field"><label>Day Teams</label><input type="number" id="dayTeams" value="4" min="1" max="20"/></div>
-      <div class="field"><label>Night Teams</label><input type="number" id="nightTeams" value="4" min="1" max="20"/></div>
+      <div class="field"><label>Day teams on site <span style="color:var(--grey-mid);font-size:9px;">MIN REQUIRED</span></label><input type="number" id="dayTeams" value="4" min="1" max="20"/><div class="field-note">tool calculates total teams needed</div></div>
+      <div class="field"><label>Night teams on site <span style="color:var(--grey-mid);font-size:9px;">MIN REQUIRED</span></label><input type="number" id="nightTeams" value="4" min="1" max="20"/><div class="field-note">tool calculates total teams needed</div></div>
     </div>
     <div class="field-row">
       <div class="field"><label>People Per Team</label><input type="number" id="teamSize" value="5" min="2" max="20"/><div class="field-note">incl. scanner</div></div>
@@ -252,7 +252,7 @@ footer{background:var(--navy);padding:16px 32px;margin-top:60px;}
     <div style="background:var(--off-white);border-radius:8px;padding:11px;margin-bottom:8px;">
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);margin-bottom:8px;">Day Shift</div>
       <div class="field-row">
-        <div class="field"><label>Start</label><input type="time" id="dayStart" value="07:00"/></div>
+        <div class="field"><label>Start</label><input type="time" id="dayStart" value="06:30"/></div>
         <div class="field"><label>End</label><input type="time" id="dayEnd" value="16:30"/></div>
       </div>
     </div>
@@ -263,7 +263,10 @@ footer{background:var(--navy);padding:16px 32px;margin-top:60px;}
         <div class="field"><label>End</label><input type="time" id="nightEnd" value="06:00"/></div>
       </div>
     </div>
-    <div class="field"><label>Unpaid Break (minutes)</label><input type="number" id="breakMin" value="30" min="0" max="120"/></div>
+    <div class="field-row">
+      <div class="field"><label>Unpaid Break (minutes)</label><input type="number" id="breakMin" value="30" min="0" max="120"/></div>
+      <div class="field"><label>Max shift adjustment <span style="color:var(--grey-mid);font-size:9px;">HRS</span></label><input type="number" id="maxAdj" value="1" min="0" max="4" step="0.5"/><div class="field-note">Group A starts later · Group B finishes earlier</div></div>
+    </div>
 
     <div class="sec-lbl">Constraints &amp; Targets</div>
     <div class="field-row">
@@ -283,7 +286,6 @@ footer{background:var(--navy);padding:16px 32px;margin-top:60px;}
       <button class="toggle-btn" data-day="sun">Sun</button>
     </div>
     <div class="check-row"><input type="checkbox" id="satDayOnly"/><span>Saturday: day shift only (no night teams)</span></div>
-    <div class="check-row"><input type="checkbox" id="allowTopUp" checked/><span>Allow top-up shifts to close night-week gaps</span></div>
 
     <div class="btn-group">
       <button class="btn btn-primary" onclick="runPlan()">
@@ -377,51 +379,84 @@ function getOperatingDates(startDate, weeks, activeDays){
 
 function fmtDate(d){ return d.toLocaleDateString('en-ZA',{day:'2-digit',month:'short'}); }
 
+function addHours(timeStr, hrs){
+  const [h,m] = timeStr.split(':').map(Number);
+  let t = h + m/60 + hrs;
+  while(t<0) t+=24; while(t>=24) t-=24;
+  const hh=Math.floor(t), mm=Math.round((t-hh)*60);
+  return `${String(hh).padStart(2,'0')}:${String(mm===60?0:mm).padStart(2,'0')}`;
+}
+
 // ═══════════════════════════════════════
 // CORE CALCULATIONS
 // ═══════════════════════════════════════
 function calcPlan(cfg, opDays){
-  const dayPaid   = +calcPaid(cfg.dayStart, cfg.dayEnd, cfg.breakMin).toFixed(4);
-  const nightPaid = +calcPaid(cfg.nightStart, cfg.nightEnd, cfg.breakMin).toFixed(4);
-  const maxDayS   = Math.min(opDays, Math.floor(cfg.maxH / dayPaid));
-  const maxNightS = Math.min(opDays, Math.floor(cfg.maxH / nightPaid));
-  const dayWH     = +(maxDayS * dayPaid).toFixed(2);
-  const nightWH   = +(maxNightS * nightPaid).toFixed(2);
+  // Base paid hours from shift times
+  const dayBase   = +calcPaid(cfg.dayStart, cfg.dayEnd, cfg.breakMin).toFixed(4);
+  const nightBase = +calcPaid(cfg.nightStart, cfg.nightEnd, cfg.breakMin).toFixed(4);
 
+  // Adjusted paid hours: both groups lose maxAdj hours from their shift
+  // Group A starts maxAdj later (same end) → shorter by maxAdj
+  // Group B finishes maxAdj earlier (same start) → shorter by maxAdj
+  const dayAdj   = +Math.max(0.5, dayBase   - cfg.maxAdj).toFixed(4);
+  const nightAdj = +Math.max(0.5, nightBase - cfg.maxAdj).toFixed(4);
+
+  // Max full shifts per person per week within OT cap
+  const maxDayS   = Math.min(opDays, Math.floor(cfg.maxH / dayAdj));
+  const maxNightS = Math.min(opDays, Math.floor(cfg.maxH / nightAdj));
+
+  // Hours per week per person
+  const dayWH   = +(maxDayS   * dayAdj).toFixed(2);
+  const nightWH = +(maxNightS * nightAdj).toFixed(2);
+
+  // Total teams needed to keep teamsOnSite teams present every operating day
+  // teamsNeeded × maxShifts ≥ teamsOnSite × opDays
+  const dayTotalTeams   = Math.ceil(cfg.dayTeams   * opDays / maxDayS);
+  const nightTotalTeams = Math.ceil(cfg.nightTeams * opDays / maxNightS);
+
+  // Adjusted times for display
+  const dayGrpAStart   = addHours(cfg.dayStart,   cfg.maxAdj);   // A starts later
+  const dayGrpBEnd     = addHours(cfg.dayEnd,    -cfg.maxAdj);   // B finishes earlier
+  const nightGrpAStart = addHours(cfg.nightStart, cfg.maxAdj);   // A starts later
+  const nightGrpBEnd   = addHours(cfg.nightEnd,  -cfg.maxAdj);   // B finishes earlier
+
+  // Cohort horizon (D/N/D/N rotation for chart)
   const cohortA=[], cohortB=[];
   for(let i=0; i<cfg.weeks; i++){
     const aDay = i%2===0;
     cohortA.push({week:i+1, shift:aDay?'Day':'Night', hours:aDay?dayWH:nightWH, shifts:aDay?maxDayS:maxNightS});
     cohortB.push({week:i+1, shift:aDay?'Night':'Day', hours:aDay?nightWH:dayWH, shifts:aDay?maxNightS:maxDayS});
   }
-
-  const nightGap = +Math.max(0, cfg.minTarget - nightWH).toFixed(2);
-  const spareND  = opDays - maxNightS;
-  const topUpOk  = nightGap>0 && spareND>0 && (nightWH+nightGap)<=cfg.maxH;
-  const topUpH   = topUpOk ? nightGap : 0;
-
-  const applyTU = (arr) => arr.map(r => ({...r, hours: cfg.allowTopUp && r.shift==='Night' && topUpOk ? +(r.hours+topUpH).toFixed(2) : r.hours, topUp: cfg.allowTopUp && r.shift==='Night' && topUpOk ? topUpH : 0}));
-  const A = applyTU(cohortA), B = applyTU(cohortB);
-
-  const avgA = +(A.reduce((s,r)=>s+r.hours,0)/cfg.weeks).toFixed(2);
-  const avgB = +(B.reduce((s,r)=>s+r.hours,0)/cfg.weeks).toFixed(2);
+  const avgA = +(cohortA.reduce((s,r)=>s+r.hours,0)/cfg.weeks).toFixed(2);
+  const avgB = +(cohortB.reduce((s,r)=>s+r.hours,0)/cfg.weeks).toFixed(2);
   const effAvg = +((avgA+avgB)/2).toFixed(2);
 
-  return { dayPaid, nightPaid, maxDayS, maxNightS, dayWH, nightWH, cohortA:A, cohortB:B, avgA, avgB, effAvg, nightGap, spareND, topUpOk, topUpH, opDays };
+  return {
+    dayBase, nightBase, dayAdj, nightAdj,
+    maxDayS, maxNightS, dayWH, nightWH,
+    dayTotalTeams, nightTotalTeams,
+    dayGrpAStart, dayGrpBEnd, nightGrpAStart, nightGrpBEnd,
+    cohortA, cohortB, avgA, avgB, effAvg,
+    opDays,
+    // aliases for backwards compat
+    dayPaid: dayAdj, nightPaid: nightAdj,
+    topUpOk: false, topUpH: 0, nightGap: 0, spareND: 0,
+  };
 }
 
-function calcHC(cfg){
+function calcHC(cfg, plan){
   const spt=cfg.scannersPerTeam, lpt=cfg.teamSize-spt, ab=cfg.absenteeism/100;
-  const cDS=cfg.dayTeams*spt, cDL=cfg.dayTeams*lpt;
-  const cNS=cfg.nightTeams*spt, cNL=cfg.nightTeams*lpt;
+  const dT=plan.dayTotalTeams, nT=plan.nightTotalTeams;
+  const cDS=dT*spt, cDL=dT*lpt, cNS=nT*spt, cNL=nT*lpt;
   const pDS=Math.ceil(cDS*ab), pDL=Math.ceil(cDL*ab);
   const pNS=Math.ceil(cNS*ab), pNL=Math.ceil(cNL*ab);
   return {
+    onSite:{day:cfg.dayTeams, night:cfg.nightTeams},
     core:{dayScan:cDS,dayLoad:cDL,nightScan:cNS,nightLoad:cNL,scan:cDS+cNS,load:cDL+cNL,total:cDS+cNS+cDL+cNL},
     pool:{dayScan:pDS,dayLoad:pDL,nightScan:pNS,nightLoad:pNL,scan:pDS+pNS,load:pDL+pNL,total:pDS+pNS+pDL+pNL},
     grand:{scan:cDS+cNS+pDS+pNS, load:cDL+cNL+pDL+pNL, total:cDS+cNS+cDL+cNL+pDS+pNS+pDL+pNL},
-    cohortA:{scan:cDS+pDS, load:cDL+pDL, total:(cDS+pDS)+(cDL+pDL)},
-    cohortB:{scan:cNS+pNS, load:cNL+pNL, total:(cNS+pNS)+(cNL+pNL)},
+    cohortA:{scan:cDS, load:cDL, total:cDS+cDL},
+    cohortB:{scan:cNS, load:cNL, total:cNS+cNL},
   };
 }
 
@@ -435,16 +470,12 @@ function generateEmployees(cfg, hc){
     const sub = cohortEmp.length%2===0 ? 1 : 2; // alternate within cohort
     emp.push({n:n++, desig, cohort, pool:isPool, sub});
   }
-  // Cohort A (starts Day)
+  // Cohort A (starts Day) — core only
   for(let i=0;i<hc.core.dayScan;i++) add('Scanner','A',false);
   for(let i=0;i<hc.core.dayLoad;i++) add('Loader','A',false);
-  for(let i=0;i<hc.pool.dayScan;i++) add('Scanner','A',true);
-  for(let i=0;i<hc.pool.dayLoad;i++) add('Loader','A',true);
-  // Cohort B (starts Night)
+  // Cohort B (starts Night) — core only
   for(let i=0;i<hc.core.nightScan;i++) add('Scanner','B',false);
   for(let i=0;i<hc.core.nightLoad;i++) add('Loader','B',false);
-  for(let i=0;i<hc.pool.nightScan;i++) add('Scanner','B',true);
-  for(let i=0;i<hc.pool.nightLoad;i++) add('Loader','B',true);
   return emp;
 }
 
@@ -519,7 +550,7 @@ function runPlan(){
     minTarget:      +document.getElementById('minTarget').value||40,
     absenteeism:    +document.getElementById('absenteeism').value||10,
     weeks:          +document.getElementById('weeks').value||4,
-    allowTopUp:     document.getElementById('allowTopUp').checked,
+    maxAdj:         +document.getElementById('maxAdj').value||1,
     satDayOnly:     document.getElementById('satDayOnly').checked,
     startDate:      document.getElementById('startDate').value,
     activeDays,
@@ -527,11 +558,11 @@ function runPlan(){
 
   const opDays = activeDays.length;
   const plan   = calcPlan(cfg, opDays);
-  const hc     = calcHC(cfg);
+  const hc     = calcHC(cfg, plan);
   const emps   = generateEmployees(cfg, hc);
   const compare= ['Mon – Fri','Mon – Sat','Mon – Sun'].map((label,i)=>{
-    const d=5+i; const p=calcPlan(cfg,d);
-    return {label, days:d, ...p, status: p.effAvg>=cfg.minTarget?'best':p.effAvg>=cfg.minTarget*.95?'ok-c':'fail-c'};
+    const d=5+i; const p=calcPlan(cfg,d); const hci=calcHC(cfg,p);
+    return {label, days:d, ...p, hc:hci, status: p.effAvg>=cfg.minTarget?'best':p.effAvg>=cfg.minTarget*.95?'ok-c':'fail-c'};
   });
   const feas   = plan.effAvg>=cfg.minTarget?'ok':plan.effAvg>=cfg.minTarget*.95?'warn':'fail';
 
@@ -546,7 +577,7 @@ function render(){
   const {cfg,plan,hc,emps,compare,feas} = G;
 
   const feaMap = {
-    ok:   {cls:'ok',   icon:'✓', title:'Plan Feasible',       msg:`All ${hc.grand.total} employees average ≥ ${cfg.minTarget} hrs/week over the ${cfg.weeks}-week period.`},
+    ok:   {cls:'ok',   icon:'✓', title:'Plan Feasible',       msg:`All ${hc.core.total} core employees average ≥ ${cfg.minTarget} hrs/week over the ${cfg.weeks}-week period. Pool staff (${hc.pool.total}) provide cover — no hours commitment.`},
     warn: {cls:'warn', icon:'⚠', title:'Target Nearly Met',   msg:`Average ${fH(plan.effAvg)} hrs/week is just below ${cfg.minTarget} hrs. See recommendations to close the gap.`},
     fail: {cls:'fail', icon:'✕', title:'Target Not Met',      msg:`Average ${fH(plan.effAvg)} hrs/week falls short of ${cfg.minTarget} hrs. Structural changes needed — see recommendations.`},
   };
@@ -557,6 +588,8 @@ function render(){
     const lbl = c.status==='best'?'✓ Target met':c.status==='ok-c'?'⚠ Nearly met':'✕ Below target';
     return `<div class="compare-card ${c.status}">
       <h4>${c.label} (${c.days} days)</h4>
+      <div class="compare-row"><span class="k">Day teams needed</span><span class="v">${c.dayTotalTeams}</span></div>
+      <div class="compare-row"><span class="k">Night teams needed</span><span class="v">${c.nightTotalTeams}</span></div>
       <div class="compare-row"><span class="k">Day hrs / week</span><span class="v">${fH(c.dayWH)}h</span></div>
       <div class="compare-row"><span class="k">Night hrs / week</span><span class="v">${fH(c.nightWH)}h</span></div>
       <div class="compare-row"><span class="k">Period avg / week</span><span class="v" style="color:${col}">${fH(c.effAvg)}h</span></div>
@@ -564,41 +597,44 @@ function render(){
     </div>`;
   }).join('');
 
-  // Calc breakdown
   const dTot = calcPaid(cfg.dayStart, cfg.dayEnd, 0);
   const nTot = calcPaid(cfg.nightStart, cfg.nightEnd, 0);
   const calcHTML = `
     <div class="calc-sec">Day Shift</div>
     <div class="calc-row"><span class="ck">${cfg.dayStart} → ${cfg.dayEnd} gross hours</span><span class="cv">${fH(dTot)}h</span></div>
     <div class="calc-row"><span class="ck">Less ${cfg.breakMin}min unpaid break</span><span class="cv" style="color:var(--red)">−${fH(cfg.breakMin/60)}h</span></div>
-    <div class="calc-row"><span class="ck">Paid hours per day shift</span><span class="cv" style="color:var(--green)">${fH(plan.dayPaid)}h</span></div>
-    <div class="calc-row"><span class="ck">Max shifts before ${cfg.maxH}h cap: ⌊${cfg.maxH}÷${fH(plan.dayPaid)}⌋</span><span class="cv">${plan.maxDayS} shifts</span></div>
-    <div class="calc-row"><span class="ck">Max day-week hours (no OT)</span><span class="cv" style="color:var(--navy)">${fH(plan.dayWH)}h</span></div>
+    <div class="calc-row"><span class="ck">Base paid hours per shift</span><span class="cv">${fH(plan.dayBase)}h</span></div>
+    <div class="calc-row"><span class="ck">Shift adjustment (${cfg.maxAdj}h) → Group A starts ${plan.dayGrpAStart} · Group B finishes ${plan.dayGrpBEnd}</span><span class="cv" style="color:var(--red)">−${fH(cfg.maxAdj)}h</span></div>
+    <div class="calc-row"><span class="ck">Adjusted paid hours per shift</span><span class="cv" style="color:var(--green)">${fH(plan.dayAdj)}h</span></div>
+    <div class="calc-row"><span class="ck">Max shifts before ${cfg.maxH}h cap: ⌊${cfg.maxH}÷${fH(plan.dayAdj)}⌋</span><span class="cv">${plan.maxDayS} shifts</span></div>
+    <div class="calc-row"><span class="ck">Hours / week per person</span><span class="cv" style="color:var(--navy)">${fH(plan.dayWH)}h</span></div>
+    <div class="calc-row"><span class="ck">Teams needed: ⌈${cfg.dayTeams} on-site × ${G.opDays} days ÷ ${plan.maxDayS} shifts⌉</span><span class="cv" style="color:var(--navy)">${plan.dayTotalTeams} teams</span></div>
     <div class="calc-sec">Night Shift</div>
     <div class="calc-row"><span class="ck">${cfg.nightStart} → ${cfg.nightEnd} (next day) gross hours</span><span class="cv">${fH(nTot)}h</span></div>
     <div class="calc-row"><span class="ck">Less ${cfg.breakMin}min unpaid break</span><span class="cv" style="color:var(--red)">−${fH(cfg.breakMin/60)}h</span></div>
-    <div class="calc-row"><span class="ck">Paid hours per night shift</span><span class="cv" style="color:var(--green)">${fH(plan.nightPaid)}h</span></div>
-    <div class="calc-row"><span class="ck">Max shifts before ${cfg.maxH}h cap: ⌊${cfg.maxH}÷${fH(plan.nightPaid)}⌋</span><span class="cv">${plan.maxNightS} shifts ${plan.nightGap>0?'<span style="color:var(--amber);font-size:10px;">(structural ceiling)</span>':''}</span></div>
-    <div class="calc-row"><span class="ck">Max night-week hours (no OT)</span><span class="cv" style="color:${plan.nightGap>0?'var(--amber)':'var(--navy)'}">${fH(plan.nightWH)}h${plan.nightGap>0?' ('+fH(plan.nightGap)+'h below '+cfg.minTarget+'h target)':''}</span></div>
-    ${plan.topUpOk?`<div class="calc-row"><span class="ck">Top-up shift closes gap (${plan.spareND} spare day${plan.spareND!==1?'s':''} available)</span><span class="cv" style="color:var(--green)">+${fH(plan.topUpH)}h ✓ within ${cfg.maxH}h cap</span></div>`:''}
-    <div class="calc-sec">Rotation Average</div>
-    <div class="calc-row"><span class="ck">Cohort A avg/week over ${cfg.weeks} weeks</span><span class="cv" style="color:${plan.avgA>=cfg.minTarget?'var(--green)':'var(--red)'}">${fH(plan.avgA)}h</span></div>
-    <div class="calc-row"><span class="ck">Cohort B avg/week over ${cfg.weeks} weeks</span><span class="cv" style="color:${plan.avgB>=cfg.minTarget?'var(--green)':'var(--red)'}">${fH(plan.avgB)}h</span></div>
-    <div class="calc-row"><span class="ck">Overall average (both cohorts)</span><span class="cv" style="color:${plan.effAvg>=cfg.minTarget?'var(--green)':'var(--red)'}">${fH(plan.effAvg)}h/wk</span></div>
-    <div class="calc-row"><span class="ck">Period commitment per employee</span><span class="cv">${fH(plan.effAvg*cfg.weeks)}h over ${cfg.weeks} weeks</span></div>
+    <div class="calc-row"><span class="ck">Base paid hours per shift</span><span class="cv">${fH(plan.nightBase)}h</span></div>
+    <div class="calc-row"><span class="ck">Shift adjustment (${cfg.maxAdj}h) → Group A starts ${plan.nightGrpAStart} · Group B finishes ${plan.nightGrpBEnd}</span><span class="cv" style="color:var(--red)">−${fH(cfg.maxAdj)}h</span></div>
+    <div class="calc-row"><span class="ck">Adjusted paid hours per shift</span><span class="cv" style="color:var(--green)">${fH(plan.nightAdj)}h</span></div>
+    <div class="calc-row"><span class="ck">Max shifts before ${cfg.maxH}h cap: ⌊${cfg.maxH}÷${fH(plan.nightAdj)}⌋</span><span class="cv">${plan.maxNightS} shifts</span></div>
+    <div class="calc-row"><span class="ck">Hours / week per person</span><span class="cv" style="color:var(--navy)">${fH(plan.nightWH)}h</span></div>
+    <div class="calc-row"><span class="ck">Teams needed: ⌈${cfg.nightTeams} on-site × ${G.opDays} days ÷ ${plan.maxNightS} shifts⌉</span><span class="cv" style="color:var(--navy)">${plan.nightTotalTeams} teams</span></div>
+    <div class="calc-sec">Period Average</div>
+    <div class="calc-row"><span class="ck">Cohort A avg/week (${cfg.weeks} weeks)</span><span class="cv" style="color:${plan.avgA>=cfg.minTarget?'var(--green)':'var(--red)'}">${fH(plan.avgA)}h</span></div>
+    <div class="calc-row"><span class="ck">Cohort B avg/week (${cfg.weeks} weeks)</span><span class="cv" style="color:${plan.avgB>=cfg.minTarget?'var(--green)':'var(--red)'}">${fH(plan.avgB)}h</span></div>
+    <div class="calc-row"><span class="ck">Overall average — both cohorts</span><span class="cv" style="color:${plan.effAvg>=cfg.minTarget?'var(--green)':'var(--red)'}">${fH(plan.effAvg)}h/wk</span></div>
   `;
 
   // Roster table
-  const weekHeaders = Array.from({length:cfg.weeks},(_,i)=>`<th class="c" style="min-width:85px;">Week ${i+1}</th>`).join('');
-  const rosterRows  = buildRosterRows();
+  const rosterTable = buildRosterTable();
   const recs        = buildRecs();
 
   document.getElementById('resultsPanel').innerHTML = `
     <div class="results-grid">
-      <div class="metric-card navy" style="animation-delay:.03s"><div class="metric-label">Total Workforce</div><div class="metric-value">${hc.grand.total}</div><div class="metric-sub">Core: ${hc.core.total} · Pool: ${hc.pool.total}</div></div>
+      <div class="metric-card navy" style="animation-delay:.03s"><div class="metric-label">Core Staff</div><div class="metric-value">${hc.core.total}</div><div class="metric-sub">Day: ${plan.dayTotalTeams} teams · Night: ${plan.nightTotalTeams} teams</div></div>
       <div class="metric-card red" style="animation-delay:.06s"><div class="metric-label">Scanners</div><div class="metric-value red">${hc.grand.scan}</div><div class="metric-sub">Core: ${hc.core.scan} · Pool: ${hc.pool.scan}</div></div>
       <div class="metric-card" style="animation-delay:.09s"><div class="metric-label">Loaders</div><div class="metric-value">${hc.grand.load}</div><div class="metric-sub">Core: ${hc.core.load} · Pool: ${hc.pool.load}</div></div>
-      <div class="metric-card ${feas==='ok'?'green':feas==='warn'?'amber':'red'}" style="animation-delay:.12s"><div class="metric-label">Avg Hrs / Week</div><div class="metric-value ${feas==='ok'?'green':feas==='warn'?'amber':''}">${fH(plan.effAvg)}</div><div class="metric-sub">Target: ${cfg.minTarget}h · Cap: ${cfg.maxH}h</div></div>
+      <div class="metric-card amber" style="animation-delay:.115s"><div class="metric-label">Pool (Cover)</div><div class="metric-value amber">${hc.pool.total}</div><div class="metric-sub">Day: ${hc.pool.dayScan+hc.pool.dayLoad} · Night: ${hc.pool.nightScan+hc.pool.nightLoad}</div></div>
+      <div class="metric-card ${feas==='ok'?'green':feas==='warn'?'amber':'red'}" style="animation-delay:.13s"><div class="metric-label">Avg Hrs / Week</div><div class="metric-value ${feas==='ok'?'green':feas==='warn'?'amber':''}">${fH(plan.effAvg)}</div><div class="metric-sub">Target: ${cfg.minTarget}h · Cap: ${cfg.maxH}h</div></div>
     </div>
 
     <div class="status-banner ${f.cls}"><div class="status-icon">${f.icon}</div><div class="status-text"><h3>${f.title}</h3><p>${f.msg}</p></div></div>
@@ -615,54 +651,39 @@ function render(){
       <table class="tbl">
         <thead><tr><th>Category</th><th class="c">Day Shift</th><th class="c">Night Shift</th><th class="r">Scanners</th><th class="r">Loaders</th><th class="r">Total</th></tr></thead>
         <tbody>
-          <tr class="sec-row"><td colspan="6">Core Staff — always required on site</td></tr>
-          <tr><td>Scanners</td><td class="c"><span class="badge b-day">${hc.core.dayScan}</span></td><td class="c"><span class="badge b-night">${hc.core.nightScan}</span></td><td class="r" style="font-weight:700">${hc.core.scan}</td><td class="r">—</td><td class="r" style="font-weight:700">${hc.core.scan}</td></tr>
-          <tr><td>Loaders</td><td class="c"><span class="badge b-day">${hc.core.dayLoad}</span></td><td class="c"><span class="badge b-night">${hc.core.nightLoad}</span></td><td class="r">—</td><td class="r" style="font-weight:700">${hc.core.load}</td><td class="r" style="font-weight:700">${hc.core.load}</td></tr>
-          <tr class="sec-row"><td colspan="6">Absenteeism Pool — rostered in rotation, guaranteed same hours as core</td></tr>
-          <tr class="pool-row"><td>Pool Scanners</td><td class="c"><span class="badge b-pool">${hc.pool.dayScan}</span></td><td class="c"><span class="badge b-pool">${hc.pool.nightScan}</span></td><td class="r">${hc.pool.scan}</td><td class="r">—</td><td class="r">${hc.pool.scan}</td></tr>
-          <tr class="pool-row"><td>Pool Loaders</td><td class="c"><span class="badge b-pool">${hc.pool.dayLoad}</span></td><td class="c"><span class="badge b-pool">${hc.pool.nightLoad}</span></td><td class="r">—</td><td class="r">${hc.pool.load}</td><td class="r">${hc.pool.load}</td></tr>
-          <tr class="total-row"><td><strong>Grand Total</strong></td><td class="c">${hc.cohortA.total}</td><td class="c">${hc.cohortB.total}</td><td class="r">${hc.grand.scan}</td><td class="r">${hc.grand.load}</td><td class="r" style="font-size:15px">${hc.grand.total}</td></tr>
+          <tr class="sec-row"><td colspan="6">Teams on site required · Day: ${cfg.dayTeams} · Night: ${cfg.nightTeams} → Total teams recommended by tool</td></tr>
+          <tr><td>Day teams (recommended)</td><td class="c"><span class="badge b-day">${plan.dayTotalTeams}</span></td><td class="c">—</td><td class="r">${plan.dayTotalTeams * cfg.scannersPerTeam}</td><td class="r">${plan.dayTotalTeams * (cfg.teamSize - cfg.scannersPerTeam)}</td><td class="r" style="font-weight:700">${plan.dayTotalTeams * cfg.teamSize}</td></tr>
+          <tr><td>Night teams (recommended)</td><td class="c">—</td><td class="c"><span class="badge b-night">${plan.nightTotalTeams}</span></td><td class="r">${plan.nightTotalTeams * cfg.scannersPerTeam}</td><td class="r">${plan.nightTotalTeams * (cfg.teamSize - cfg.scannersPerTeam)}</td><td class="r" style="font-weight:700">${plan.nightTotalTeams * cfg.teamSize}</td></tr>
+          <tr class="sec-row"><td colspan="6">Absenteeism pool — cover staff only · no hours commitment · day pool covers day teams · night pool covers night teams</td></tr>
+          <tr class="pool-row"><td>Pool Scanners</td><td class="c"><span class="badge b-pool">${hc.pool.dayScan} day</span></td><td class="c"><span class="badge b-pool">${hc.pool.nightScan} night</span></td><td class="r">${hc.pool.scan}</td><td class="r">—</td><td class="r">${hc.pool.scan}</td></tr>
+          <tr class="pool-row"><td>Pool Loaders</td><td class="c"><span class="badge b-pool">${hc.pool.dayLoad} day</span></td><td class="c"><span class="badge b-pool">${hc.pool.nightLoad} night</span></td><td class="r">—</td><td class="r">${hc.pool.load}</td><td class="r">${hc.pool.load}</td></tr>
+          <tr class="sec-row"><td colspan="6">Grand total — headcount to recruit and retain</td></tr>
+          <tr class="total-row"><td><strong>Grand Total</strong></td><td class="c">${hc.cohortA.total} core</td><td class="c">${hc.cohortB.total} core</td><td class="r">${hc.grand.scan}</td><td class="r">${hc.grand.load}</td><td class="r" style="font-size:15px">${hc.grand.total}</td></tr>
         </tbody>
       </table>
     </div>
 
-    <div class="sec-title" style="animation-delay:.1s">Employee Roster — ${cfg.weeks}-Week Plan</div>
-    <div style="font-size:11px;color:var(--grey-dark);margin-bottom:10px;animation:fadeUp .35s .1s forwards;opacity:0;line-height:1.5;">
-      Each row = one employee. Sub-groups stagger rest days so at least 50% of night teams are always on shift.
-      <strong>D</strong> = Day shift · <strong>N</strong> = Night shift · <strong>TU</strong> = Top-up (partial shift) · <strong>—</strong> = Rest.
-      ${cfg.allowTopUp&&plan.topUpOk?`Top-up shifts add ${fH(plan.topUpH)}h on one rest day per night week.`:''}
-    </div>
-
     <div class="roster-download-bar">
-      <p><strong>Day-by-day roster:</strong> Download the full dated schedule with every employee's specific working days — print-ready for managers to hand to staff.</p>
+      <p><strong>Day-by-day roster:</strong> Full dated schedule with each team's specific working days and hours — print-ready for managers.</p>
       <button class="btn-download" onclick="exportDailyRoster()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Download Day-by-Day Roster
       </button>
     </div>
 
-    <div class="tbl-wrap" style="animation-delay:.12s">
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th style="min-width:36px;">#</th>
-            <th style="min-width:80px;">Role</th>
-            <th style="min-width:72px;">Cohort</th>
-            <th style="min-width:48px;">Sub</th>
-            ${weekHeaders}
-            <th class="r" style="min-width:72px;">Avg/Wk</th>
-            <th class="r" style="min-width:72px;">Total Hrs</th>
-          </tr>
-        </thead>
-        <tbody>${rosterRows}</tbody>
-      </table>
-    </div>
+    ${rosterTable}
 
     <div class="sec-title" style="animation-delay:.15s">Operating Day Comparison</div>
     <div class="compare-grid">${compareHTML}</div>
 
     <div class="chart-wrap">
       <div class="chart-title">Weekly Hours — Both Cohorts · ${cfg.weeks}-Week Horizon</div>
+      <div style="font-size:11px;color:var(--grey-dark);margin-bottom:12px;line-height:1.5;">
+        Dark bars = Cohort A (starts Day) · Faded bars = Cohort B (starts Night, mirror image of A).
+        Bars alternate high/low because day and night shifts produce different hours within the OT cap.
+        Night weeks will typically sit below the green target line — this is structural, not a scheduling error.
+        The average across all bars is what each employee is committed to over the period.
+      </div>
       <canvas id="hoursChart" height="130"></canvas>
     </div>
 
@@ -674,48 +695,99 @@ function render(){
 }
 
 // ═══════════════════════════════════════
-// ROSTER TABLE ROWS
+// ROSTER TABLE — TEAM ROTATION FORMAT
 // ═══════════════════════════════════════
-function buildRosterRows(){
-  const {cfg,plan,emps,hc} = G;
+function buildRosterTable(){
+  const {cfg, plan, hc} = G;
   const opDays = G.opDays;
-  let html = '';
+  const dayNames = G.activeDays.map(d => DAY_NAMES[DAY_ORDER.indexOf(d)]);
 
-  ['A','B'].forEach(cohort => {
-    const label = cohort==='A' ? `Cohort A — starts on Day Shift (${hc.cohortA.scan} scanners · ${hc.cohortA.load} loaders · ${hc.cohortA.total} total)` : `Cohort B — starts on Night Shift (${hc.cohortB.scan} scanners · ${hc.cohortB.load} loaders · ${hc.cohortB.total} total)`;
-    html += `<tr class="cohort-hdr"><td colspan="${5+cfg.weeks}">${label}</td></tr>`;
+  // Styles for group badges
+  const styleA = 'display:inline-flex;align-items:center;justify-content:center;width:32px;height:24px;background:#fef9c3;color:#854d0e;border-radius:5px;font-size:11px;font-weight:700;';
+  const styleB = 'display:inline-flex;align-items:center;justify-content:center;width:32px;height:24px;background:#dcfce7;color:#15803d;border-radius:5px;font-size:11px;font-weight:700;';
+  const styleNA= 'display:inline-flex;align-items:center;justify-content:center;width:32px;height:24px;background:#ede9fe;color:#5b21b6;border-radius:5px;font-size:11px;font-weight:700;';
+  const styleNB= 'display:inline-flex;align-items:center;justify-content:center;width:32px;height:24px;background:#dbeafe;color:#1d4ed8;border-radius:5px;font-size:11px;font-weight:700;';
+  const styleOff = 'color:var(--grey-mid);font-size:14px;';
 
-    emps.filter(e=>e.cohort===cohort).forEach((emp,i) => {
-      const weeks = Array.from({length:cfg.weeks},(_,wi) => getWeekSummary(emp,wi,plan,cfg,opDays));
-      const total = +weeks.reduce((s,w)=>s+w.hours,0).toFixed(1);
-      const avg   = +(total/cfg.weeks).toFixed(1);
-      const avgOk = avg >= cfg.minTarget;
-      const poolLabel = emp.pool ? ' <span class="badge b-pool">Pool</span>' : '';
+  function workPattern(sub, maxS){
+    const p = Array(opDays).fill(false);
+    if(maxS >= opDays){ p.fill(true); return p; }
+    const start = sub===1 ? 0 : opDays-maxS;
+    for(let i=start;i<start+maxS;i++) p[i]=true;
+    return p;
+  }
 
-      const weekCells = weeks.map(w => {
-        const isDay = w.shift==='Day';
-        const col   = isDay ? '#1d4ed8' : '#5b21b6';
-        const bg    = isDay ? '#dbeafe' : '#ede9fe';
-        const pct   = Math.min(100,(w.hours/cfg.maxH)*100);
-        const tuNote = w.topUp ? `<div style="font-size:9px;color:var(--green);margin-top:1px;">+${fH(plan.topUpH)}h top-up</div>` : '';
-        return `<td class="week-cell">
-          <div class="wc-shift" style="color:${col}">${w.shift}</div>
-          <div class="wc-detail">${w.shifts} shift${w.shifts!==1?'s':''} · ${fH(w.hours)}h${tuNote}</div>
-          <div class="wc-bar" style="background:${bg};width:100%"><div class="wc-bar" style="background:${col};width:${pct}%;height:3px;border-radius:2px;"></div></div>
-        </td>`;
-      }).join('');
+  function teamRow(label, times, paidH, maxS, sub, badgeStyle, badgeTxt){
+    const p = workPattern(sub, maxS);
+    const shifts = p.filter(Boolean).length;
+    const hrs = +(shifts*paidH).toFixed(1);
+    const ok = hrs >= cfg.minTarget;
+    const cells = p.map(w => w
+      ? `<td class="c"><span style="${badgeStyle}">${badgeTxt}</span></td>`
+      : `<td class="c" style="${styleOff}">—</td>`
+    ).join('');
+    return `<tr>
+      <td style="font-weight:500;white-space:nowrap;">${label}</td>
+      <td style="font-size:11px;color:var(--grey-dark);white-space:nowrap;">${times}</td>
+      <td class="c" style="font-size:12px;">${paidH.toFixed(1)}h</td>
+      ${cells}
+      <td class="r" style="font-weight:500;">${shifts}</td>
+      <td class="r" style="font-weight:700;color:${ok?'var(--green)':'var(--red)'};">${hrs.toFixed(1)}h</td>
+      <td class="c" style="font-size:12px;color:${ok?'var(--green)':'var(--red)'};">${ok?'✓':'✗'}</td>
+    </tr>`;
+  }
 
-      html += `<tr ${emp.pool?'class="pool-row"':''}>
-        <td style="color:var(--grey-mid);font-size:11px">${emp.n}</td>
-        <td><span class="badge ${emp.desig==='Scanner'?'b-scan':'b-load'}">${emp.desig}</span>${poolLabel}</td>
-        <td style="font-weight:600;color:var(--navy)">Cohort ${emp.cohort}</td>
-        <td style="color:var(--grey-dark);font-size:11px">Sub ${emp.sub}</td>
-        ${weekCells}
-        <td class="r" style="font-weight:700;color:${avgOk?'var(--green)':'var(--red)'}">${fH(avg)}h</td>
-        <td class="r" style="font-weight:700">${fH(total)}h</td>
-      </tr>`;
-    });
-  });
+  function coverageRow(maxS, totalTeams, colspan){
+    const covPerDay = [];
+    for(let d=0;d<opDays;d++){
+      const inS1 = maxS>=opDays || d<maxS;
+      const inS2 = maxS>=opDays || d>=(opDays-maxS);
+      const s1t = Math.ceil(totalTeams/2), s2t = Math.floor(totalTeams/2);
+      covPerDay.push((inS1?s1t:0)+(inS2?s2t:0));
+    }
+    return `<tr class="sec-row">
+      <td colspan="3" style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;">Teams on site</td>
+      ${covPerDay.map(c=>`<td class="c" style="font-weight:700;color:${c>=4?'var(--green)':c>=2?'var(--amber)':'var(--red)'};">✓ ${c}</td>`).join('')}
+      <td colspan="3"></td>
+    </tr>`;
+  }
+
+  const hdr = `<th>Team</th><th>Shift</th><th class="c">Paid</th>${dayNames.map(d=>`<th class="c">${d}</th>`).join('')}<th class="r">Shifts</th><th class="r">Hrs/wk</th><th class="c">Status</th>`;
+  const colSpan = 3 + opDays + 3;
+  const grpA = Math.ceil(plan.dayTotalTeams/2), grpB = plan.dayTotalTeams - grpA;
+  const grpNA= Math.ceil(plan.nightTotalTeams/2), grpNB = plan.nightTotalTeams - grpNA;
+
+  // ── Day rotation ──
+  let html = `<div class="sec-title" style="margin-top:0;animation-delay:.1s">Day shift rotation — ${plan.dayTotalTeams} teams total · ${cfg.dayTeams} on site at all times</div>
+  <div style="font-size:11px;color:var(--grey-dark);margin-bottom:8px;line-height:1.5;">
+    Group A starts ${cfg.maxAdj}h later (${plan.dayGrpAStart}→${cfg.dayEnd}) · Group B finishes ${cfg.maxAdj}h earlier (${cfg.dayStart}→${plan.dayGrpBEnd}) · both ${plan.dayAdj.toFixed(1)}h paid per shift
+  </div>
+  <div class="tbl-wrap" style="animation-delay:.12s"><table class="tbl">
+    <thead><tr>${hdr}</tr></thead><tbody>
+    <tr class="sec-row"><td colspan="${colSpan}">Group A — ${plan.dayGrpAStart} → ${cfg.dayEnd} · ${plan.dayAdj.toFixed(1)}h paid</td></tr>`;
+  for(let t=1;t<=grpA;t++)
+    html += teamRow(`Day T${t}`, `${plan.dayGrpAStart} → ${cfg.dayEnd}`, plan.dayAdj, plan.maxDayS, 1, styleA, 'A');
+  html += `<tr class="sec-row"><td colspan="${colSpan}">Group B — ${cfg.dayStart} → ${plan.dayGrpBEnd} · ${plan.dayAdj.toFixed(1)}h paid</td></tr>`;
+  for(let t=grpA+1;t<=plan.dayTotalTeams;t++)
+    html += teamRow(`Day T${t}`, `${cfg.dayStart} → ${plan.dayGrpBEnd}`, plan.dayAdj, plan.maxDayS, 2, styleB, 'B');
+  html += coverageRow(plan.maxDayS, plan.dayTotalTeams, colSpan);
+  html += `</tbody></table></div>`;
+
+  // ── Night rotation ──
+  html += `<div class="sec-title" style="animation-delay:.13s">Night shift rotation — ${plan.nightTotalTeams} teams total · ${cfg.nightTeams} on site at all times</div>
+  <div style="font-size:11px;color:var(--grey-dark);margin-bottom:8px;line-height:1.5;">
+    Group A starts ${cfg.maxAdj}h later (${plan.nightGrpAStart}→${cfg.nightEnd}) · Group B finishes ${cfg.maxAdj}h earlier (${cfg.nightStart}→${plan.nightGrpBEnd}) · both ${plan.nightAdj.toFixed(1)}h paid per shift
+  </div>
+  <div class="tbl-wrap" style="animation-delay:.14s"><table class="tbl">
+    <thead><tr>${hdr}</tr></thead><tbody>
+    <tr class="sec-row"><td colspan="${colSpan}">Group A — ${plan.nightGrpAStart} → ${cfg.nightEnd} · ${plan.nightAdj.toFixed(1)}h paid</td></tr>`;
+  for(let t=1;t<=grpNA;t++)
+    html += teamRow(`Night T${t}`, `${plan.nightGrpAStart} → ${cfg.nightEnd}`, plan.nightAdj, plan.maxNightS, 1, styleNA, 'A');
+  html += `<tr class="sec-row"><td colspan="${colSpan}">Group B — ${cfg.nightStart} → ${plan.nightGrpBEnd} · ${plan.nightAdj.toFixed(1)}h paid</td></tr>`;
+  for(let t=grpNA+1;t<=plan.nightTotalTeams;t++)
+    html += teamRow(`Night T${t}`, `${cfg.nightStart} → ${plan.nightGrpBEnd}`, plan.nightAdj, plan.maxNightS, 2, styleNB, 'B');
+  html += coverageRow(plan.maxNightS, plan.nightTotalTeams, colSpan);
+  html += `</tbody></table></div>`;
 
   return html;
 }
@@ -755,15 +827,13 @@ function buildRecs(){
   const {cfg,plan,hc,feas} = G;
   const recs=[]; let n=1;
   if(feas==='ok'){
-    recs.push({t:'info',n:n++,title:'Plan is feasible',desc:`All ${hc.grand.total} employees (including ${hc.pool.total} pool members) average ≥ ${cfg.minTarget} hrs/week. The roster achieves this without exceeding the ${cfg.maxH}h OT cap.`});
+    recs.push({t:'info',n:n++,title:'Plan is feasible',desc:`All ${hc.core.total} core staff average ≥ ${cfg.minTarget} hrs/week over the ${cfg.weeks}-week period within the ${cfg.maxH}h OT cap.`});
   } else {
-    if(plan.nightGap>0) recs.push({t:'primary',n:n++,title:'Night shift structural ceiling',desc:`At ${fH(plan.nightPaid)}h per shift, 4 night shifts = ${fH(plan.nightPaid*4)}h — over the ${cfg.maxH}h cap. Night workers are limited to ${plan.maxNightS} shifts = ${fH(plan.nightWH)}h/week. This is not a scheduling error, it's arithmetic.`});
-    if(plan.topUpOk) recs.push({t:'primary',n:n++,title:`Enable top-up shifts (+${fH(plan.topUpH)}h per night week)`,desc:`${plan.spareND} spare operating day${plan.spareND!==1?'s are':' is'} available in each night week. A ${fH(plan.topUpH)}-hr partial shift on one spare day brings the night week to ${fH(plan.nightWH+plan.topUpH)}h — within the ${cfg.maxH}h cap.`});
-    else if(plan.nightGap>0) recs.push({t:'secondary',n:n++,title:'No spare days for top-up on current schedule',desc:`All operating days are filled with full shifts. Add Saturday to create a spare day for top-up, or extend to Mon–Sat operation.`});
+    recs.push({t:'primary',n:n++,title:'Target not fully met',desc:`Average ${fH(plan.effAvg)} hrs/week is below the ${cfg.minTarget}h target. Try increasing the shift adjustment, adding operating days, or reducing the minimum target.`});
   }
-  recs.push({t:'secondary',n:n++,title:'50% minimum manning — how the roster achieves it',desc:`Night workers are split into Sub-group 1 (works first ${plan.maxNightS} operating nights) and Sub-group 2 (works last ${plan.maxNightS} operating nights). The overlap in the middle ensures at least 50% of night teams are on shift every operating night. Day workers with 5+ shifts/week work all operating days — no split needed.`});
-  recs.push({t:'secondary',n:n++,title:'Pool members must be rostered, not on standby',desc:`All ${hc.pool.total} pool members are included in the rotation above. They accumulate their hours by working regular shifts alongside core staff. When a core member is absent, the pool member in the same sub-group covers the slot.`});
-  if(hc.pool.scan < Math.ceil(hc.core.scan * (cfg.absenteeism/100)) + 1) recs.push({t:'info',n:n++,title:`Train at least ${hc.core.scan + 2} scanners total`,desc:`Scanners are specialist — one absent scanner without cover can idle a full team. With ${hc.grand.scan} total scanners, recommend training ${hc.core.scan+2} minimum for buffer.`});
+  recs.push({t:'secondary',n:n++,title:'How the shift adjustment works',desc:`Group A starts ${cfg.maxAdj}h later. Group B finishes ${cfg.maxAdj}h earlier. Both groups get ${plan.dayAdj.toFixed(1)}h paid day shifts and ${plan.nightAdj.toFixed(1)}h paid night shifts. The coverage row in each table confirms ${cfg.dayTeams} day and ${cfg.nightTeams} night teams are always on site.`});
+  recs.push({t:'secondary',n:n++,title:`Day: ${plan.dayTotalTeams} teams · Night: ${plan.nightTotalTeams} teams`,desc:`Day: ⌈${cfg.dayTeams} on-site × ${G.opDays} days ÷ ${plan.maxDayS} shifts⌉ = ${plan.dayTotalTeams} teams · Night: ⌈${cfg.nightTeams} × ${G.opDays} ÷ ${plan.maxNightS}⌉ = ${plan.nightTotalTeams} teams · ${hc.grand.total} total people to recruit including pool.`});
+  recs.push({t:'info',n:n++,title:'Pool — cover staff, no hours commitment',desc:`${hc.pool.total} pool members: ${hc.pool.dayScan+hc.pool.dayLoad} day pool (${hc.pool.dayScan} scanners + ${hc.pool.dayLoad} loaders) · ${hc.pool.nightScan+hc.pool.nightLoad} night pool (${hc.pool.nightScan} scanners + ${hc.pool.nightLoad} loaders). Step in when core staff are absent — no roster, no guaranteed hours.`});
   return recs.map(r=>`<li class="rec-item ${r.t}"><div class="rec-bullet">${r.n}</div><div class="rec-content"><h4>${r.title}</h4><p>${r.desc}</p></div></li>`).join('');
 }
 
@@ -772,58 +842,62 @@ function buildRecs(){
 // ═══════════════════════════════════════
 function exportDailyRoster(){
   if(!G){alert('Run a plan first.');return;}
-  const {cfg,plan,emps} = G;
-  const opDays  = G.opDays;
-  const dates   = getOperatingDates(cfg.startDate, cfg.weeks, cfg.activeDays);
-
+  const {cfg,plan} = G;
+  const opDays = G.opDays;
+  const dates  = getOperatingDates(cfg.startDate, cfg.weeks, cfg.activeDays);
   const q = v => `"${String(v).replace(/"/g,'""')}"`;
 
-  // Header row: # | Role | Cohort | Sub | Pool | [dates...] | Total Shifts | Total Hours | Avg/Wk
-  const dateHeaders = dates.map(d => q(`${DAY_NAMES[DAY_ORDER.indexOf(d.dayName)]} ${fmtDate(d.date)} (W${d.weekNum})`));
-  const header = [q('#'), q('Role'), q('Cohort'), q('Sub-group'), q('Pool?'), ...dateHeaders, q('Total Shifts'), q('Total Hours'), q('Avg Hrs/Wk')];
+  // Build team list: Group A (sub 1) and Group B (sub 2) for day and night
+  const dayGrpA = Math.ceil(plan.dayTotalTeams/2);
+  const nigGrpA = Math.ceil(plan.nightTotalTeams/2);
 
-  const rows = emps.map(emp => {
-    const codes = [];
-    let totalShifts=0, totalHours=0;
-    for(let wi=0; wi<cfg.weeks; wi++){
-      const pattern = getDailyPattern(emp, wi, plan, cfg, opDays);
-      const cohortADay = wi%2===0;
-      const onDay = emp.cohort==='A' ? cohortADay : !cohortADay;
-      dates.filter(d=>d.weekNum===wi+1).forEach((d,di) => {
-        const code = pattern[di] || '—';
-        codes.push(code);
-        if(code==='D'||code==='N') { totalShifts++; totalHours += onDay ? plan.dayPaid : plan.nightPaid; }
-        if(code==='TU') { totalShifts++; totalHours += plan.topUpH; }
+  function workPattern(sub, maxS){
+    const p = Array(opDays).fill(false);
+    if(maxS>=opDays){p.fill(true);return p;}
+    const start = sub===1 ? 0 : opDays-maxS;
+    for(let i=start;i<start+maxS;i++) p[i]=true;
+    return p;
+  }
+
+  const dateHdrs = dates.map(d => q(`${DAY_NAMES[DAY_ORDER.indexOf(d.dayName)]} ${fmtDate(d.date)} (W${d.weekNum})`));
+  const header = [q('Team'), q('Type'), q('Group'), q('Shift'), q('Paid Hrs/Shift'), ...dateHdrs, q('Total Shifts'), q('Total Hours'), q('Avg Hrs/Wk')];
+  const rows = [];
+
+  function addTeamRows(label, shiftType, times, paidH, maxS, totalTeams, grpA){
+    for(let t=1; t<=totalTeams; t++){
+      const sub = t<=grpA ? 1 : 2;
+      const grp = t<=grpA ? 'A' : 'B';
+      const pat = workPattern(sub, maxS);
+      let totalShifts=0, totalHours=0;
+      const cells = dates.map(d => {
+        const works = d.opIdx < pat.length && pat[d.opIdx];
+        if(works){ totalShifts++; totalHours+=paidH; }
+        return q(works ? `${shiftType} · ${paidH.toFixed(1)}h` : '— · 0h');
       });
+      totalHours = +totalHours.toFixed(1);
+      rows.push([q(`${label} T${t}`), q(shiftType), q(`Group ${grp}`), q(times), q(paidH.toFixed(1)), ...cells, q(totalShifts), q(totalHours), q(+(totalHours/cfg.weeks).toFixed(1))].join(','));
     }
-    totalHours = +totalHours.toFixed(1);
-    const avgWk = +(totalHours/cfg.weeks).toFixed(1);
-    return [q(emp.n), q(emp.desig), q('Cohort '+emp.cohort), q('Sub '+emp.sub), q(emp.pool?'Yes':'No'), ...codes.map(q), q(totalShifts), q(totalHours), q(avgWk)].join(',');
-  });
+  }
 
-  // Legend
+  addTeamRows('Day',   'Day',   `${plan.dayGrpAStart}–${cfg.dayEnd} (A) / ${cfg.dayStart}–${plan.dayGrpBEnd} (B)`,   plan.dayAdj,   plan.maxDayS,   plan.dayTotalTeams,   dayGrpA);
+  addTeamRows('Night', 'Night', `${plan.nightGrpAStart}–${cfg.nightEnd} (A) / ${cfg.nightStart}–${plan.nightGrpBEnd} (B)`, plan.nightAdj, plan.maxNightS, plan.nightTotalTeams, nigGrpA);
+
   const legend = [
-    '', 'D = Day shift ('+cfg.dayStart+' – '+cfg.dayEnd+', '+fH(plan.dayPaid)+'h paid)',
-    '', 'N = Night shift ('+cfg.nightStart+' – '+cfg.nightEnd+', '+fH(plan.nightPaid)+'h paid)',
-    ...(plan.topUpOk ? ['', 'TU = Top-up partial shift (+'+fH(plan.topUpH)+'h on spare rest day)'] : []),
-    '', '— = Rest day (non-working)',
-    '', `Min target: ${cfg.minTarget}h/week averaged over ${cfg.weeks} weeks`,
-    '', `OT cap: ${cfg.maxH}h/week (hard limit)`,
+    '', `Day shift: Group A ${plan.dayGrpAStart}–${cfg.dayEnd} · Group B ${cfg.dayStart}–${plan.dayGrpBEnd} · ${plan.dayAdj.toFixed(1)}h paid`,
+    '', `Night shift: Group A ${plan.nightGrpAStart}–${cfg.nightEnd} · Group B ${cfg.nightStart}–${plan.nightGrpBEnd} · ${plan.nightAdj.toFixed(1)}h paid`,
+    '', `— · 0h = rest day · Min target: ${cfg.minTarget}h/week · OT cap: ${cfg.maxH}h/week`,
   ];
 
   const csv = [
-    `"LINEHAUL PLANNER — DAY-BY-DAY ROSTER"`,
-    `"Plan period: ${cfg.startDate} · ${cfg.weeks} weeks · ${cfg.activeDays.map(d=>DAY_NAMES[DAY_ORDER.indexOf(d)]).join('/')} operating"`,
-    '',
-    header.join(','),
-    ...rows,
-    '',
+    q('LINEHAUL PLANNER — DAY-BY-DAY ROSTER'),
+    q(`Plan: ${cfg.startDate} · ${cfg.weeks} weeks · ${G.activeDays.map(d=>DAY_NAMES[DAY_ORDER.indexOf(d)]).join('/')} · Shift adj: ${cfg.maxAdj}h`),
+    '', header.join(','), ...rows, '',
     ...legend.map((l,i)=>i%2===0?'"---"':q(l)),
   ].join('\n');
 
-  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
   a.href=url; a.download=`linehaul-roster-${cfg.startDate}.csv`; a.click();
   URL.revokeObjectURL(url);
 }
