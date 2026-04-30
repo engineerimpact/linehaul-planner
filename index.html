@@ -808,15 +808,15 @@ function buildRosterTable(){
   if(dg.oneGroup){
     html += `<tr class="sec-row"><td colspan="${dayColSpan}">${dg.aStart} → ${dg.aEnd} · ${plan.dayAdj.toFixed(1)}h paid</td></tr>`;
     for(let t=0; t<plan.dayTotalTeams; t++)
-      html += teamRow(t, `Day T${t+1}`, `${dg.aStart} → ${dg.aEnd}`, plan.dayAdj, plan.maxDayS, dayOpDays, styleA, '●');
+      html += teamRow(t, `T${t+1}`, `${dg.aStart} → ${dg.aEnd}`, plan.dayAdj, plan.maxDayS, dayOpDays, styleA, '●');
   } else {
     const grpA = Math.ceil(plan.dayTotalTeams/2);
     html += `<tr class="sec-row"><td colspan="${dayColSpan}">Group A — ${dg.aStart} → ${dg.aEnd} · ${plan.dayAdj.toFixed(1)}h paid</td></tr>`;
     for(let t=0; t<grpA; t++)
-      html += teamRow(t, `Day T${t+1}`, `${dg.aStart} → ${dg.aEnd}`, plan.dayAdj, plan.maxDayS, dayOpDays, styleA, 'A');
+      html += teamRow(t, `T${t+1}`, `${dg.aStart} → ${dg.aEnd}`, plan.dayAdj, plan.maxDayS, dayOpDays, styleA, 'A');
     html += `<tr class="sec-row"><td colspan="${dayColSpan}">Group B — ${dg.bStart} → ${dg.bEnd} · ${plan.dayAdj.toFixed(1)}h paid</td></tr>`;
     for(let t=grpA; t<plan.dayTotalTeams; t++)
-      html += teamRow(t, `Day T${t+1}`, `${dg.bStart} → ${dg.bEnd}`, plan.dayAdj, plan.maxDayS, dayOpDays, styleB, 'B');
+      html += teamRow(t, `T${t+1}`, `${dg.bStart} → ${dg.bEnd}`, plan.dayAdj, plan.maxDayS, dayOpDays, styleB, 'B');
   }
   html += coverageRow(plan.dayTotalTeams, plan.maxDayS, cfg.dayTeams, dayOpDays, dayColSpan);
   html += `</tbody></table></div>`;
@@ -839,15 +839,15 @@ function buildRosterTable(){
   if(ng.oneGroup){
     html += `<tr class="sec-row"><td colspan="${nightColSpan}">${ng.aStart} → ${ng.aEnd} · ${plan.nightAdj.toFixed(1)}h paid</td></tr>`;
     for(let t=0; t<plan.nightTotalTeams; t++)
-      html += teamRow(t, `Night T${t+1}`, `${ng.aStart} → ${ng.aEnd}`, plan.nightAdj, plan.maxNightS, nightOpDays, styleNA, '●');
+      html += teamRow(t, `T${plan.dayTotalTeams+t+1}`, `${ng.aStart} → ${ng.aEnd}`, plan.nightAdj, plan.maxNightS, nightOpDays, styleNA, '●');
   } else {
     const grpNA = Math.ceil(plan.nightTotalTeams/2);
     html += `<tr class="sec-row"><td colspan="${nightColSpan}">Group A — ${ng.aStart} → ${ng.aEnd} · ${plan.nightAdj.toFixed(1)}h paid</td></tr>`;
     for(let t=0; t<grpNA; t++)
-      html += teamRow(t, `Night T${t+1}`, `${ng.aStart} → ${ng.aEnd}`, plan.nightAdj, plan.maxNightS, nightOpDays, styleNA, 'A');
+      html += teamRow(t, `T${plan.dayTotalTeams+t+1}`, `${ng.aStart} → ${ng.aEnd}`, plan.nightAdj, plan.maxNightS, nightOpDays, styleNA, 'A');
     html += `<tr class="sec-row"><td colspan="${nightColSpan}">Group B — ${ng.bStart} → ${ng.bEnd} · ${plan.nightAdj.toFixed(1)}h paid</td></tr>`;
     for(let t=grpNA; t<plan.nightTotalTeams; t++)
-      html += teamRow(t, `Night T${t+1}`, `${ng.bStart} → ${ng.bEnd}`, plan.nightAdj, plan.maxNightS, nightOpDays, styleNB, 'B');
+      html += teamRow(t, `T${plan.dayTotalTeams+t+1}`, `${ng.bStart} → ${ng.bEnd}`, plan.nightAdj, plan.maxNightS, nightOpDays, styleNB, 'B');
   }
   html += coverageRow(plan.nightTotalTeams, plan.maxNightS, cfg.nightTeams, nightOpDays, nightColSpan);
   html += `</tbody></table></div>`;
@@ -1003,103 +1003,134 @@ function exportDailyRoster(){
     ['Team','Role','Employee Name','Notes'],
   ];
 
-  function addTeamNameRows(prefix, totalTeams){
+  function addTeamNameRows(prefix, totalTeams, startNum){
     for(let t=1;t<=totalTeams;t++){
-      namesData.push([`${prefix} Team ${t}`,'Scanner','','']);
+      namesData.push([`Team ${startNum+t-1} (${prefix})`,'Scanner','','']);
       for(let l=1;l<=cfg.teamSize-cfg.scannersPerTeam;l++){
-        namesData.push([t===1&&l===1?'':``, `Loader ${l}`,'','']);
+        namesData.push(['', `Loader ${l}`,'','']);
       }
       namesData.push([]);
     }
   }
-  addTeamNameRows('Day', plan.dayTotalTeams);
-  addTeamNameRows('Night', plan.nightTotalTeams);
+  addTeamNameRows('Day', plan.dayTotalTeams, 1);
+  addTeamNameRows('Night', plan.nightTotalTeams, plan.dayTotalTeams+1);
 
   const wsNames = XLSX.utils.aoa_to_sheet(namesData);
   wsNames['!cols'] = [{wch:18},{wch:12},{wch:22},{wch:20}];
   XLSX.utils.book_append_sheet(wb, wsNames, 'Team Names');
 
-  // ── WEEKLY SHEETS ──
+  // ── WEEKLY SHEETS — all teams, alternating D/N ──
+  // Week parity: odd weeks (1,3,5...) = Cohort A on Day, Cohort B on Night
+  //              even weeks (2,4,6...) = Cohort A on Night, Cohort B on Day
+  // Cohort A = teams 1..dayTotalTeams (originally day-assigned)
+  // Cohort B = teams dayTotalTeams+1..total (originally night-assigned)
+
   for(let wk=1; wk<=cfg.weeks; wk++){
     const ws = getWeekStart(wk);
     const sheetName = `W${wk} - ${fmtSheetDate(ws)}`;
-    const weekDates  = getWeekDates(wk);
-    const dayDates   = weekDates.filter(d => !(d.dn==='sat'&&cfg.satDayOnly===false||true)); // all dates for day
-    const nightDates = weekDates.filter(d => !(d.dn==='sat'&&cfg.satDayOnly)||(!(d.dn==='sun'&&cfg.sunDayOnly)));
-
-    // Real filter
-    const dDates = weekDates; // day works all selected days
+    const weekDates = getWeekDates(wk);
+    const dDates = weekDates;
     const nDates = weekDates.filter(d =>
       !(d.dn==='sat'&&cfg.satDayOnly) && !(d.dn==='sun'&&cfg.sunDayOnly)
     );
-
+    const isOddWeek = wk % 2 === 1;
     const dateHdrs = dDates.map(d=>`${DAY_NAMES[DAY_ORDER.indexOf(d.dn)]} ${d.dt.getDate()}/${d.dt.getMonth()+1}`);
 
     const data = [
-      [`WEEK ${wk} — ${fmtSheetDate(ws)}`],
+      [`WEEK ${wk} — ${fmtSheetDate(ws)} · ${isOddWeek ? 'T1–T'+plan.dayTotalTeams+' on DAY · T'+(plan.dayTotalTeams+1)+'–T'+(plan.dayTotalTeams+plan.nightTotalTeams)+' on NIGHT' : 'T1–T'+plan.dayTotalTeams+' on NIGHT · T'+(plan.dayTotalTeams+1)+'–T'+(plan.dayTotalTeams+plan.nightTotalTeams)+' on DAY'}`],
       [],
-      ['','TEAM','SHIFT','START','END',...dateHdrs,'SHIFTS','HOURS'],
+      ['TEAM','SHIFT','START','END',...dateHdrs,'SHIFTS','HOURS'],
     ];
 
-    // Day teams
-    data.push(['DAY SHIFT','','','','', ...dDates.map(()=>''),'','']);
-    for(let t=0;t<plan.dayTotalTeams;t++){
-      const pat = cyclicPat(t, plan.maxDayS, dayOpDays);
-      const dg = plan.dg;
-      const start = dg.oneGroup ? dg.aStart : (t < Math.ceil(plan.dayTotalTeams/2) ? dg.aStart : dg.bStart);
-      const end   = dg.oneGroup ? dg.aEnd   : (t < Math.ceil(plan.dayTotalTeams/2) ? dg.aEnd   : dg.bEnd);
-      let shifts=0;
-      const cells = dDates.map((_,di) => {
-        const works = di < pat.length && pat[di];
-        if(works) shifts++;
-        return works ? 'WORKING' : 'REST';
+    const totalTeams = plan.dayTotalTeams + plan.nightTotalTeams;
+
+    for(let t=0; t<totalTeams; t++){
+      const teamNum = t + 1;
+      const isCohortA = t < plan.dayTotalTeams;
+      // Determine this week's shift
+      const onDay = isOddWeek ? isCohortA : !isCohortA;
+      const shiftLabel = onDay ? 'DAY' : 'NIGHT';
+
+      const paidH  = onDay ? plan.dayAdj   : plan.nightAdj;
+      const maxS   = onDay ? plan.maxDayS  : plan.maxNightS;
+      const opD    = onDay ? dayOpDays     : nightOpDays;
+      const grp    = onDay ? plan.dg       : plan.ng;
+
+      // Shift times — within cohort, determine group A or B
+      const cohortIdx = isCohortA ? t : t - plan.dayTotalTeams;
+      const cohortTotal = isCohortA ? plan.dayTotalTeams : plan.nightTotalTeams;
+      const grpACount = Math.ceil(cohortTotal/2);
+      const isGrpA = cohortIdx < grpACount;
+      const start = grp.oneGroup ? grp.aStart : (isGrpA ? grp.aStart : grp.bStart);
+      const end   = grp.oneGroup ? grp.aEnd   : (isGrpA ? grp.aEnd   : grp.bEnd);
+
+      // Working pattern within the week
+      const pat = cyclicPat(cohortIdx, maxS, opD);
+      let shifts = 0;
+
+      const activeDates = onDay ? dDates : nDates;
+      const cells = dDates.map((d, di) => {
+        if(!onDay){
+          const isExcluded = (d.dn==='sat'&&cfg.satDayOnly)||(d.dn==='sun'&&cfg.sunDayOnly);
+          if(isExcluded) return 'DAY ONLY';
+          const nightDi = nDates.findIndex(nd=>nd.dn===d.dn);
+          const works = nightDi>=0 && nightDi < pat.length && pat[nightDi];
+          if(works) shifts++;
+          return works ? 'WORKING' : 'REST';
+        } else {
+          const works = di < pat.length && pat[di];
+          if(works) shifts++;
+          return works ? 'WORKING' : 'REST';
+        }
       });
-      data.push(['',`Day T${t+1}`,'Day',start,end,...cells,shifts,+(shifts*plan.dayAdj).toFixed(1)]);
+
+      data.push([`T${teamNum}`, shiftLabel, start, end, ...cells, shifts, +(shifts*paidH).toFixed(1)]);
     }
 
+    // Coverage rows
     data.push([]);
-
-    // Night teams
-    data.push(['NIGHT SHIFT','','','','', ...dDates.map(()=>''),'','']);
-    for(let t=0;t<plan.nightTotalTeams;t++){
-      const pat = cyclicPat(t, plan.maxNightS, nightOpDays);
-      const ng = plan.ng;
-      const start = ng.oneGroup ? ng.aStart : (t < Math.ceil(plan.nightTotalTeams/2) ? ng.aStart : ng.bStart);
-      const end   = ng.oneGroup ? ng.aEnd   : (t < Math.ceil(plan.nightTotalTeams/2) ? ng.aEnd   : ng.bEnd);
-      let shifts=0;
-      const cells = dDates.map((d,di) => {
-        const isNightExcluded = (d.dn==='sat'&&cfg.satDayOnly)||(d.dn==='sun'&&cfg.sunDayOnly);
-        if(isNightExcluded) return 'DAY ONLY';
-        const nightDi = nDates.findIndex(nd=>nd.dn===d.dn);
-        const works = nightDi>=0 && nightDi < pat.length && pat[nightDi];
-        if(works) shifts++;
-        return works ? 'WORKING' : 'REST';
-      });
-      data.push(['',`Night T${t+1}`,'Night',start,end,...cells,shifts,+(shifts*plan.nightAdj).toFixed(1)]);
-    }
-
-    // Coverage row
     const covDay = dDates.map((_,di) => {
       let c=0;
-      for(let t=0;t<plan.dayTotalTeams;t++){ const p=cyclicPat(t,plan.maxDayS,dayOpDays); if(di<p.length&&p[di])c++; }
-      return `✓ ${c}`;
+      for(let t=0;t<totalTeams;t++){
+        const isCohortA = t < plan.dayTotalTeams;
+        const onDay = isOddWeek ? isCohortA : !isCohortA;
+        if(!onDay) continue;
+        const p = cyclicPat(isCohortA?t:t-plan.dayTotalTeams, plan.maxDayS, dayOpDays);
+        if(di<p.length&&p[di]) c++;
+      }
+      return `Day ✓${c}`;
     });
-    data.push([]);
-    data.push(['COVERAGE','','','','', ...covDay,'','']);
+    const covNight = dDates.map((d,di) => {
+      const isExcluded = (d.dn==='sat'&&cfg.satDayOnly)||(d.dn==='sun'&&cfg.sunDayOnly);
+      if(isExcluded) return '—';
+      let c=0;
+      for(let t=0;t<totalTeams;t++){
+        const isCohortA = t < plan.dayTotalTeams;
+        const onDay = isOddWeek ? isCohortA : !isCohortA;
+        if(onDay) continue;
+        const nightDi = nDates.findIndex(nd=>nd.dn===d.dn);
+        if(nightDi<0) continue;
+        const p = cyclicPat(isCohortA?t:t-plan.dayTotalTeams, plan.maxNightS, nightOpDays);
+        if(nightDi<p.length&&p[nightDi]) c++;
+      }
+      return `Night ✓${c}`;
+    });
+    data.push(['COVERAGE (DAY)','','','', ...covDay,'','']);
+    data.push(['COVERAGE (NIGHT)','','','', ...covNight,'','']);
 
     const ws2 = XLSX.utils.aoa_to_sheet(data);
-    ws2['!cols'] = [{wch:14},{wch:12},{wch:8},{wch:8},{wch:8},...dDates.map(()=>({wch:11})),{wch:8},{wch:8}];
+    ws2['!cols'] = [{wch:8},{wch:8},{wch:8},{wch:8},...dDates.map(()=>({wch:12})),{wch:8},{wch:8}];
 
-    // Style WORKING/REST cells
+    // Style cells
     const range = XLSX.utils.decode_range(ws2['!ref']||'A1');
     for(let R=range.s.r; R<=range.e.r; R++){
       for(let C=range.s.c; C<=range.e.c; C++){
         const addr = XLSX.utils.encode_cell({r:R,c:C});
         if(!ws2[addr]) continue;
         const v = ws2[addr].v;
+        const rowData = data[R];
         if(v==='WORKING'){
-          const rowData = data[R];
-          const isNight = rowData && rowData[2]==='Night';
+          const isNight = rowData && rowData[1]==='NIGHT';
           ws2[addr].s = isNight ? workNight : workDay;
         } else if(v==='REST'){ ws2[addr].s = restCell; }
         else if(v==='DAY ONLY'){ ws2[addr].s = {fill:{fgColor:{rgb:'FEF9C3'}},font:{color:{rgb:'854D0E'}},alignment:{horizontal:'center'}}; }
